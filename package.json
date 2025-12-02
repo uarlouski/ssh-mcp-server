@@ -1,6 +1,6 @@
 {
-  "name": "ssh-mcp-server",
-  "version": "0.1.0",
+  "name": "@uarlouski/ssh-mcp-server",
+  "version": "1.0.0",
   "description": "Model Context Protocol server for secure SSH command execution and port forwarding with connection pooling and comprehensive security controls",
   "type": "module",
   "main": "dist/index.js",
