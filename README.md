@@ -2,7 +2,7 @@
 
 A Model Context Protocol (MCP) server that provides SSH capabilities for remote command execution and port forwarding with comprehensive security controls.
 
-[![npm version](https://badge.fury.io/js/ssh-mcp-server.svg)]()
+[![npm version](https://badge.fury.io/js/@uarlouski%2Fssh-mcp-server.svg)](https://www.npmjs.com/package/@uarlouski/ssh-mcp-server)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 ## Features
@@ -13,9 +13,21 @@ A Model Context Protocol (MCP) server that provides SSH capabilities for remote 
 - SSH key authentication
 - Configurable command and host allowlists
 
-## Installation
+## MCP Usage
 
-todo
+```json
+{
+  "servers": {
+    "ssh": {
+      "command": "npx",
+      "args": [
+        "@uarlouski/ssh-mcp-server@latest",
+        "--configPath=/home/user/config.json"
+      ]
+    }
+  }
+}
+```
 
 ## Configuration
 
