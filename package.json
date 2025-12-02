@@ -1,0 +1,79 @@
+{
+  "name": "ssh-mcp-server",
+  "version": "0.1.0",
+  "description": "Model Context Protocol server for secure SSH command execution and port forwarding with connection pooling and comprehensive security controls",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "bin": {
+    "ssh-mcp-server": "dist/index.js"
+  },
+  "files": [
+    "dist/**/*.js",
+    "dist/**/*.d.ts",
+    "dist/**/*.d.ts.map",
+    "!dist/**/*.test.*",
+    "!dist/**/__tests__/**",
+    "!dist/**/*-backup.*",
+    "config.example.json",
+    "README.md",
+    "LICENSE",
+    "CHANGELOG.md"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "watch": "tsc --watch",
+    "start": "node dist/index.js",
+    "dev": "tsc && node dist/index.js",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
+    "prepare": "npm run build",
+    "prepublishOnly": "npm test && npm run build"
+  },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "ssh",
+    "ssh2",
+    "remote-execution",
+    "port-forwarding",
+    "ssh-tunnel",
+    "devops",
+    "automation",
+    "remote-commands",
+    "ssh-client",
+    "connection-pooling",
+    "kubernetes",
+    "infrastructure",
+    "ai-tools",
+    "llm-tools"
+  ],
+  "author": "Uladzislau Arlouski <uarlouski@gmail.com>",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/uarlouski/ssh-mcp-server.git"
+  },
+  "homepage": "https://github.com/uarlouski/ssh-mcp-server#readme",
+  "bugs": {
+    "url": "https://github.com/uarlouski/ssh-mcp-server/issues"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.0",
+    "shell-quote": "^1.8.3",
+    "ssh2": "^1.15.0"
+  },
+  "devDependencies": {
+    "@types/jest": "^29.5.0",
+    "@types/node": "^20.0.0",
+    "@types/shell-quote": "^1.7.5",
+    "@types/ssh2": "^1.15.0",
+    "jest": "^29.7.0",
+    "ts-jest": "^29.1.0",
+    "typescript": "^5.3.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

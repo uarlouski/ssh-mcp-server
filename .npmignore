@@ -1,0 +1,40 @@
+# Source files
+src/
+tsconfig.json
+
+# Tests - exclude from dist too
+**/__tests__/
+**/*.test.ts
+**/*.test.js
+**/*.test.d.ts
+**/*.test.js.map
+**/*.test.d.ts.map
+**/*.spec.ts
+**/*.spec.js
+**/*.spec.d.ts
+jest.config.js
+coverage/
+
+# Development
+.git/
+.gitignore
+*.log
+.env
+.DS_Store
+
+# Documentation (keep README.md)
+CONTRIBUTING.md
+
+# Config examples and private configs
+config.json
+*.key
+*.pem
+
+# Backup files
+*-backup.*
+
+# Keep these for users
+!config.example.json
+!LICENSE
+!README.md
+!CHANGELOG.md

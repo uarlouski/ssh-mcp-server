@@ -1,0 +1,45 @@
+{
+  "allowedCommands": [
+    "ls",
+    "cat",
+    "grep",
+    "ps",
+    "docker",
+    "kubectl",
+    "git",
+    "systemctl",
+    "df",
+    "curl"
+  ],
+  "servers": {
+    "production-api": {
+      "host": "api-prod-01.example.com",
+      "username": "deploy",
+      "privateKeyPath": "~/.ssh/production_deploy_key"
+    },
+    "production-db": {
+      "host": "db-prod-master.example.com",
+      "port": 2222,
+      "username": "dbadmin",
+      "privateKeyPath": "~/.ssh/db_admin_key"
+    },
+    "kubernetes-bastion": {
+      "host": "k8s-bastion.example.com",
+      "username": "k8s-operator",
+      "privateKeyPath": "~/.ssh/kubernetes_operator_key"
+    },
+    "staging-app": {
+      "host": "staging-app-01.example.com",
+      "username": "deployer",
+      "privateKeyPath": "~/.ssh/staging_key"
+    },
+    "monitoring-server": {
+      "host": "monitoring.example.com",
+      "port": 22022,
+      "username": "monitor",
+      "privateKeyPath": "~/.ssh/monitoring_key"
+    }
+  },
+  "timeout": 30000,
+  "maxConnections": 10
+}
