@@ -81,6 +81,16 @@ Set up SSH port forwarding.
 }
 ```
 
+Or let the system assign a random local port:
+
+```json
+{
+  "connectionName": "staging-app",
+  "remoteHost": "internal-db.cluster.local",
+  "remotePort": 5432
+}
+```
+
 ### ssh_close_port_forward
 Close an active port forward.
 

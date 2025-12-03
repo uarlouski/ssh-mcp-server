@@ -116,7 +116,7 @@ export class SSHConnectionManager {
     const client = await this.getConnection(config);
     const forwardKey = `${this.getConnectionKey(config)}:${localPort}->${remoteHost}:${remotePort}`;
 
-    if (this.forwardingServers.has(forwardKey)) {
+    if (localPort !== 0 && this.forwardingServers.has(forwardKey)) {
       return {
         localPort,
         status: 'already_active'
@@ -130,7 +130,7 @@ export class SSHConnectionManager {
 
         client.forwardOut(
           '127.0.0.1',
-          localPort,
+          socket.localPort || localPort,
           remoteHost,
           remotePort,
           (err, stream) => {
@@ -173,15 +173,19 @@ export class SSHConnectionManager {
       });
 
       server.listen(localPort, '127.0.0.1', () => {
-        this.forwardingServers.set(forwardKey, {
+        const allocatedPort = localPort === 0 ? (server.address() as any).port : localPort;
+        const actualForwardKey = `${this.getConnectionKey(config)}:${allocatedPort}->${remoteHost}:${remotePort}`;
+
+        this.forwardingServers.set(actualForwardKey, {
           config,
-          localPort,
+          localPort: allocatedPort,
           remoteHost,
           remotePort,
           server,
         });
+
         resolve({
-          localPort,
+          localPort: allocatedPort,
           status: 'active'
         });
       });

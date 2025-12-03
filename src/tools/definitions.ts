@@ -42,7 +42,7 @@ export const tools: Tool[] = [
           description: 'Remote port to forward to',
         },
       },
-      required: ['connectionName', 'localPort', 'remoteHost', 'remotePort'],
+      required: ['connectionName', 'remoteHost', 'remotePort'],
     },
   },
   {
