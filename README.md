@@ -1,46 +1,153 @@
 # SSH MCP Server
 
-A Model Context Protocol (MCP) server that provides SSH capabilities for remote command execution and port forwarding with comprehensive security controls.
+A Model Context Protocol (MCP) server that provides secure SSH capabilities for AI assistants, enabling remote command execution and port forwarding with comprehensive security controls.
 
 [![npm version](https://badge.fury.io/js/@uarlouski%2Fssh-mcp-server.svg)](https://www.npmjs.com/package/@uarlouski/ssh-mcp-server)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
+## Table of Contents
+
+- [Features](#features)
+- [Installation](#installation)
+- [Quick Start](#quick-start)
+- [Configuration](#configuration)
+- [Available Tools](#available-tools)
+- [Security](#security)
+- [Examples](#examples)
+- [License](#license)
+
 ## Features
 
-- SSH command execution on remote servers
-- SSH port forwarding and tunnels
-- Persistent connection pooling
-- SSH key authentication
-- Configurable command and host allowlists
+- 🔐 **Secure SSH Command Execution** - Execute commands on remote servers with granular security controls
+- 🛡️ **Host Allowlisting** - Only connect to pre-configured, trusted servers
+- 🌉 **SSH Port Forwarding** - Create secure tunnels to access remote services
+- 🔄 **Connection Pooling** - Persistent connections with automatic management
+- 🔑 **SSH Key Authentication** - Secure authentication using SSH private keys
+- ✅ **Command Allowlisting** - Restrict which commands can be executed
+- 📦 **Named Services** - Pre-configured port forwarding services for common use cases
 
-## MCP Usage
+## Installation
+
+### As an MCP Server
+
+The recommended way to use this package is as an MCP server with AI assistants like GitHub Copilot.
+
+**Prerequisites:**
+- Node.js 18.0.0 or higher
+- SSH access to target servers
+- SSH private keys configured
+
+**Using npx (recommended):**
+
+No installation required! Add to your MCP client configuration:
 
 ```json
 {
-  "servers": {
+  "mcpServers": {
     "ssh": {
       "command": "npx",
       "args": [
         "@uarlouski/ssh-mcp-server@latest",
-        "--configPath=/home/user/config.json"
+        "--configPath=/path/to/your/config.json"
       ]
     }
   }
 }
 ```
 
+**Global installation:**
+
+```bash
+npm install -g @uarlouski/ssh-mcp-server
+```
+
+Then configure with:
+
+```json
+{
+  "mcpServers": {
+    "ssh": {
+      "command": "ssh-mcp-server",
+      "args": ["--configPath=/path/to/your/config.json"]
+    }
+  }
+}
+```
+
+## Quick Start
+
+### 1. Create SSH Keys
+
+If you don't already have SSH keys for your servers:
+
+```bash
+ssh-keygen -t ed25519 -f ~/.ssh/deploy_key -C "deploy@example.com"
+ssh-copy-id -i ~/.ssh/deploy_key.pub user@your-server.com
+```
+
+### 2. Create Configuration File
+
+Create a `config.json` file:
+
+```json
+{
+  "allowedCommands": ["ls", "cat", "grep", "docker", "kubectl"],
+  "servers": {
+    "my-server": {
+      "host": "example.com",
+      "username": "deploy",
+      "privateKeyPath": "~/.ssh/deploy_key"
+    }
+  }
+}
+```
+
+### 3. Configure Your MCP Client
+
+Add the server to your MCP client (e.g., GitHub Copilot):
+
+```json
+{
+  "mcpServers": {
+    "ssh": {
+      "command": "npx",
+      "args": [
+        "@uarlouski/ssh-mcp-server@latest",
+        "--configPath=/Users/yourname/config.json"
+      ]
+    }
+  }
+}
+```
+
+### 4. Restart Your MCP Client
+
+Restart your AI assistant to load the new server configuration.
+
 ## Configuration
 
-Create `config.json`:
+### Basic Configuration
+
+The configuration file supports the following options:
 
 ```json
 {
   "allowedCommands": ["ls", "pwd", "cat", "grep", "docker", "kubectl"],
   "servers": {
-    "staging-app": {
-      "host": "staging-app-01.example.com",
-      "username": "deploy",
-      "privateKeyPath": "~/.ssh/deploy_key"
+    "server-name": {
+      "host": "hostname-or-ip",
+      "port": 22,
+      "username": "username",
+      "privateKeyPath": "~/.ssh/private_key"
+    }
+  },
+  "portForwardingServices": {
+    "service-name": {
+      "connectionName": "server-name",
+      "localPort": 8080,
+      "remoteHost": "localhost",
+      "remotePort": 80,
+      "description": "Optional description"
     }
   },
   "timeout": 30000,
@@ -48,94 +155,336 @@ Create `config.json`:
 }
 ```
 
-### Key Options
+### Configuration Options
 
-- `allowedCommands`: Array of allowed command names
-  - If specified (non-empty): Enables strict validation of all commands including pipes, chains, and substitutions
-  - If omitted or empty: Disables validation (all commands allowed)
-- `servers`: Named SSH server configurations
-- `timeout`: Connection timeout in ms (default: 30000)
-- `maxConnections`: Max concurrent connections (default: 5)
+#### `allowedCommands` (optional)
 
-## Available Tools
+Array of base command names that are permitted for execution.
 
-### ssh_execute_command
-Execute commands on remote servers.
+- **If specified (non-empty)**: Enables strict validation
+  - Only listed commands can be executed
+  - Validates complex commands including pipes (`|`), chains (`&&`, `||`, `;`), and substitutions (`$()`)
+  - Blocks bypass attempts like `ls | rm -rf /`
+- **If omitted or empty**: Disables validation (all commands allowed - use with caution!)
 
+**Example:**
 ```json
-{
-  "connectionName": "staging-app",
-  "command": "kubectl get pods"
+"allowedCommands": ["ls", "cat", "grep", "docker", "kubectl", "systemctl"]
+```
+
+#### `servers` (required)
+
+Named SSH server configurations. Each server must have:
+
+- `host` (required): Hostname or IP address
+- `username` (required): SSH username
+- `privateKeyPath` (required): Path to SSH private key (supports `~` expansion)
+- `port` (optional): SSH port (default: 22)
+
+**Example:**
+```json
+"servers": {
+  "staging-api": {
+    "host": "api-staging-01.example.com",
+    "username": "deploy",
+    "privateKeyPath": "~/.ssh/staging_deploy_key"
+  },
+  "staging-db": {
+    "host": "db-staging-master.example.com",
+    "port": 2222,
+    "username": "dbadmin",
+    "privateKeyPath": "~/.ssh/db_admin_key"
+  }
 }
 ```
 
-### ssh_port_forward
-Set up SSH port forwarding.
+#### `portForwardingServices` (optional)
 
+Pre-configured named port forwarding services for common use cases.
+
+- `connectionName` (required): Name of the server from `servers` config
+- `remoteHost` (required): Remote host to forward to
+- `remotePort` (required): Remote port to forward to
+- `localPort` (optional): Local port to bind to (random if omitted)
+- `description` (optional): Human-readable description
+
+**Example:**
+```json
+"portForwardingServices": {
+  "pg-staging-database": {
+    "connectionName": "staging-db",
+    "remoteHost": "db-internal-01.example.com",
+    "remotePort": 5432,
+    "description": "PostgreSQL database access"
+  }
+}
+```
+
+#### `timeout` (optional)
+
+Connection timeout in milliseconds. Default: `30000` (30 seconds).
+
+#### `maxConnections` (optional)
+
+Maximum number of concurrent SSH connections. Default: `5`.
+
+### Complete Example
+
+See [config.example.json](config.example.json) for a complete configuration example.
+
+## Available Tools
+
+### `ssh_execute_command`
+
+Execute commands on remote servers.
+
+**Parameters:**
+- `connectionName` (string, required): Name of the server from your config
+- `command` (string, required): Command to execute
+
+**Example:**
 ```json
 {
-  "connectionName": "staging-app",
+  "connectionName": "staging-api",
+  "command": "docker ps -a"
+}
+```
+
+**Response:**
+```json
+{
+  "stdout": "CONTAINER ID   IMAGE     COMMAND   ...",
+  "stderr": "",
+  "exitCode": 0
+}
+```
+
+### `ssh_port_forward`
+
+Set up SSH port forwarding to access remote services.
+
+**Parameters:**
+- `connectionName` (string, required): Name of the server from your config
+- `remoteHost` (string, required): Remote host to forward to
+- `remotePort` (number, required): Remote port to forward to
+- `localPort` (number, optional): Local port to bind to (random if omitted)
+
+**Example with specific local port:**
+```json
+{
+  "connectionName": "staging-db",
   "localPort": 8080,
   "remoteHost": "internal-db.cluster.local",
   "remotePort": 5432
 }
 ```
 
-Or let the system assign a random local port:
-
+**Example with automatic port assignment:**
 ```json
 {
-  "connectionName": "staging-app",
+  "connectionName": "staging-db",
   "remoteHost": "internal-db.cluster.local",
   "remotePort": 5432
 }
 ```
 
-### ssh_close_port_forward
-Close an active port forward.
-
+**Response:**
 ```json
 {
-  "connectionName": "staging-app",
+  "localPort": 8080,
+  "remoteHost": "internal-db.cluster.local",
+  "remotePort": 5432,
+  "status": "active"
+}
+```
+
+### `ssh_close_port_forward`
+
+Close an active port forward.
+
+**Parameters:**
+- `connectionName` (string, required): Name of the server
+- `localPort` (number, required): Local port to close
+
+**Example:**
+```json
+{
+  "connectionName": "staging-db",
   "localPort": 8080
 }
 ```
 
-### ssh_list_port_forwards
-List all active port forwards (no parameters).
+### `ssh_list_port_forwards`
 
-### ssh_port_forward_service
-Start a pre-configured named port forwarding service from config.json.
+List all active port forwards across all connections.
 
+**Parameters:** None
+
+**Response:**
 ```json
 {
-  "serviceName": "production-database"
+  "forwards": [
+    {
+      "connectionName": "staging-db",
+      "localPort": 8080,
+      "remoteHost": "internal-db.cluster.local",
+      "remotePort": 5432
+    }
+  ]
 }
 ```
 
-This requires defining services in your config.json:
+### `ssh_port_forward_service`
+
+Start a pre-configured named port forwarding service from your config.
+
+**Parameters:**
+- `serviceName` (string, required): Name of the service from `portForwardingServices` config
+
+**Example:**
 ```json
 {
-  "portForwardingServices": {
-    "production-database": {
-      "connectionName": "production-db",
-      "localPort": 5432,
-      "remoteHost": "db-internal",
-      "remotePort": 5432,
-      "description": "Production database access"
+  "serviceName": "pg-staging-database"
+}
+```
+
+This is equivalent to calling `ssh_port_forward` with the pre-configured parameters.
+
+## Security
+
+### Built-in Security Features
+
+1. **Command Validation**
+   - Automatically enabled when `allowedCommands` is specified
+   - Validates all commands including pipes (`|`), chains (`&&`, `||`, `;`), and command substitutions (`$()`, backticks)
+   - Blocks bypass attempts like `ls | rm -rf /` or `cat $(whoami)`
+   - Uses robust parsing to prevent command injection
+
+2. **Server Allowlist**
+   - Only pre-configured servers in `config.json` can be accessed
+   - No dynamic server connections allowed
+   - Prevents unauthorized access to infrastructure
+
+3. **SSH Key Authentication Only**
+   - Only SSH key-based authentication is supported
+   - No password authentication
+   - Follows security best practices
+
+4. **Connection Pooling**
+   - Limits concurrent connections via `maxConnections`
+   - Prevents resource exhaustion
+   - Automatic cleanup of idle connections
+
+### Security Considerations
+
+⚠️ **Warning:** This server provides powerful capabilities. Consider the following:
+
+- AI assistants will have the ability to execute commands and create tunnels on configured servers
+- Ensure you understand the capabilities you're granting
+- Start with restrictive `allowedCommands` and expand as needed
+- Use separate SSH keys for MCP access
+- Regularly audit command execution logs
+
+## Examples
+
+### Example 1: Kubernetes Management
+
+**Config:**
+```json
+{
+  "allowedCommands": ["kubectl", "helm", "docker"],
+  "servers": {
+    "k8s-bastion": {
+      "host": "k8s-bastion.example.com",
+      "username": "k8s-operator",
+      "privateKeyPath": "~/.ssh/kubernetes_operator_key"
     }
   }
 }
 ```
 
-## Security
+**Usage:**
+Ask your AI assistant: "Check the status of pods in the staging namespace"
 
-- **Command Validation**: Automatically enabled when `allowedCommands` is specified
-  - Validates all commands including pipes (`|`), chains (`&&`, `||`, `;`), and substitutions (`$()`)
-  - Blocks bypass attempts like `ls | rm -rf /`
-- **Server Allowlist**: Only pre-configured servers in `config.json` can be accessed
-- **SSH Key Auth**: Only SSH key authentication is supported
+The assistant will execute:
+```json
+{
+  "connectionName": "k8s-bastion",
+  "command": "kubectl get pods -n staging"
+}
+```
+
+### Example 2: Database Access via Port Forwarding
+
+**Config:**
+```json
+{
+  "servers": {
+    "db-bastion": {
+      "host": "bastion.example.com",
+      "username": "dbadmin",
+      "privateKeyPath": "~/.ssh/db_key"
+    }
+  },
+  "portForwardingServices": {
+    "staging-db": {
+      "connectionName": "db-bastion",
+      "localPort": 5432,
+      "remoteHost": "db-internal.example.com",
+      "remotePort": 5432,
+      "description": "Staging PostgreSQL database"
+    }
+  }
+}
+```
+
+**Usage:**
+Ask your AI assistant: "Start the staging database tunnel"
+
+The assistant will execute:
+```json
+{
+  "serviceName": "staging-db"
+}
+```
+
+Then you can connect locally: `psql -h localhost -p 5432 -U dbuser`
+
+### Example 3: Docker Container Management
+
+**Config:**
+```json
+{
+  "allowedCommands": ["docker", "docker-compose"],
+  "servers": {
+    "app-server": {
+      "host": "app-01.example.com",
+      "username": "deploy",
+      "privateKeyPath": "~/.ssh/deploy_key"
+    }
+  }
+}
+```
+
+**Usage:**
+Ask your AI assistant: "Restart the nginx container on app-server"
+
+The assistant will execute:
+```json
+{
+  "connectionName": "app-server",
+  "command": "docker restart nginx"
+}
+```
 
 ## License
 
 MIT - see [LICENSE](LICENSE) file for details.
+
+---
+
+**Repository:** [github.com/uarlouski/ssh-mcp-server](https://github.com/uarlouski/ssh-mcp-server)
+
+**Issues:** [github.com/uarlouski/ssh-mcp-server/issues](https://github.com/uarlouski/ssh-mcp-server/issues)
+
+**npm Package:** [@uarlouski/ssh-mcp-server](https://www.npmjs.com/package/@uarlouski/ssh-mcp-server)
