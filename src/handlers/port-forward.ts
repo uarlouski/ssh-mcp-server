@@ -5,7 +5,7 @@ export async function handlePortForward(
   args: any,
   context: HandlerContext
 ): Promise<CallToolResult> {
-  const { connectionName, localPort, remoteHost, remotePort } = args;
+  const { connectionName, localPort = 0, remoteHost, remotePort } = args;
 
   const sshConfig = context.configManager.getServer(connectionName);
 

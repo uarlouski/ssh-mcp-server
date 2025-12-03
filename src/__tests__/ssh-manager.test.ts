@@ -373,6 +373,7 @@ describe('SSHConnectionManager', () => {
         listen: jest.fn(),
         on: jest.fn(),
         close: jest.fn(),
+        address: jest.fn(),
       };
 
       mockNetModule = require('net');
@@ -502,6 +503,83 @@ describe('SSHConnectionManager', () => {
         expect.any(Function)
       );
     });
+
+    it('should handle dynamic port allocation', async () => {
+      mockServer.listen.mockImplementation((port: number, host: string, callback: any) => {
+        setTimeout(() => callback(), 0);
+        return mockServer;
+      });
+
+      mockServer.on.mockReturnValue(mockServer);
+      mockServer.address.mockReturnValue({ port: 12345 });
+
+      const result = await sshManager.setupPortForward(sshConfig, 0, 'localhost', 3000);
+
+      expect(result).toEqual({
+        localPort: 12345,
+        status: 'active',
+      });
+
+      expect(mockNetModule.createServer).toHaveBeenCalled();
+      expect(mockServer.listen).toHaveBeenCalledWith(0, '127.0.0.1', expect.any(Function));
+
+      const forwards = sshManager.listPortForwards();
+      expect(forwards).toHaveLength(1);
+      expect(forwards[0].localPort).toBe(12345);
+    });
+
+    it('should use allocated port in forwardOut when using dynamic allocation', async () => {
+      let socketHandler: any;
+
+      mockNetModule.createServer.mockImplementation((handler: any) => {
+        socketHandler = handler;
+        return mockServer;
+      });
+
+      mockServer.listen.mockImplementation((port: number, host: string, callback: any) => {
+        setTimeout(() => callback(), 0);
+        return mockServer;
+      });
+
+      mockServer.on.mockReturnValue(mockServer);
+      mockServer.address.mockReturnValue({ port: 12345 });
+
+      await sshManager.setupPortForward(sshConfig, 0, 'localhost', 3000);
+
+      const mockSocket = {
+        localPort: 12345,
+        setNoDelay: jest.fn(),
+        setKeepAlive: jest.fn(),
+        pipe: jest.fn(),
+        on: jest.fn(),
+        destroy: jest.fn(),
+        end: jest.fn(),
+      };
+
+      const mockStream = {
+        pipe: jest.fn(),
+        on: jest.fn(),
+        end: jest.fn(),
+        destroy: jest.fn(),
+      };
+
+      mockClient.forwardOut.mockImplementation((srcHost, srcPort, dstHost, dstPort, callback) => {
+        if (callback) {
+          callback(undefined, mockStream as any);
+        }
+        return mockClient;
+      });
+
+      socketHandler(mockSocket);
+
+      expect(mockClient.forwardOut).toHaveBeenCalledWith(
+        '127.0.0.1',
+        12345,
+        'localhost',
+        3000,
+        expect.any(Function)
+      );
+    });
   });
 
   describe('closePortForward', () => {
@@ -530,6 +608,7 @@ describe('SSHConnectionManager', () => {
         listen: jest.fn(),
         on: jest.fn(),
         close: jest.fn(),
+        address: jest.fn().mockReturnValue({ port: 8080 }),
       };
 
       mockNetModule = require('net');
