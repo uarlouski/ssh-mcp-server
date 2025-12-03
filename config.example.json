@@ -27,17 +27,14 @@
       "host": "k8s-bastion.example.com",
       "username": "k8s-operator",
       "privateKeyPath": "~/.ssh/kubernetes_operator_key"
-    },
-    "staging-app": {
-      "host": "staging-app-01.example.com",
-      "username": "deployer",
-      "privateKeyPath": "~/.ssh/staging_key"
-    },
-    "monitoring-server": {
-      "host": "monitoring.example.com",
-      "port": 22022,
-      "username": "monitor",
-      "privateKeyPath": "~/.ssh/monitoring_key"
+    }
+  },
+  "portForwardingServices": {
+    "pg-prod-database": {
+      "connectionName": "production-db",
+      "remoteHost": "db-internal-01.example.com",
+      "remotePort": 5432,
+      "description": "PostgreSQL database access"
     }
   },
   "timeout": 30000,

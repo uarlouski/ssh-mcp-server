@@ -35,6 +35,12 @@ export class ConfigManager {
     for (const [serverName, serverConfig] of Object.entries(this.config.servers)) {
       this.validateServerConfig(serverName, serverConfig);
     }
+
+    if (this.config.portForwardingServices) {
+      for (const [serviceName, serviceConfig] of Object.entries(this.config.portForwardingServices)) {
+        this.validatePortForwardingService(serviceName, serviceConfig);
+      }
+    }
   }
 
   private validateServerConfig(serverName: string, config: SSHConfig): void {
@@ -46,7 +52,7 @@ export class ConfigManager {
 
     if (config.port === undefined || config.port === null) {
       config.port = 22;
-    } else if (typeof config.port !== 'number' || config.port < 1 || config.port > 65535) {
+    } else if (!this.isValidPort(config.port)) {
       errors.push('port must be a number between 1 and 65535');
     }
 
@@ -71,8 +77,43 @@ export class ConfigManager {
     }
   }
 
+  isValidPort(port: number, dynamicAllocation: boolean = false): boolean {
+    const lowRange = dynamicAllocation ? 0 : 1;
+    return typeof port === 'number' && port >= lowRange && port <= 65535;
+  }
+
   isEmptyValue(value: string) {
     return !value || typeof value !== 'string' || value.trim() === ''
+  }
+
+  private validatePortForwardingService(serviceName: string, service: any): void {
+    const errors: string[] = [];
+
+    if (this.isEmptyValue(service.connectionName)) {
+      errors.push('connectionName is required and must reference a server in config.json');
+    } else if (!this.config.servers?.[service.connectionName]) {
+      errors.push(`connectionName '${service.connectionName}' does not exist in servers`);
+    }
+
+    if (this.isEmptyValue(service.remoteHost)) {
+      errors.push('remoteHost is required and must be a non-empty string');
+    }
+
+    if (!this.isValidPort(service.remotePort)) {
+      errors.push('remotePort must be a number between 1 and 65535');
+    }
+
+    if (service.localPort !== undefined && service.localPort !== null) {
+      if (!this.isValidPort(service.localPort, true)) {
+        errors.push('localPort must be a number between 0 and 65535 (0 for dynamic allocation)');
+      }
+    }
+
+    if (errors.length > 0) {
+      throw new Error(
+        `Invalid port forwarding service '${serviceName}':\n  - ${errors.join('\n  - ')}`
+      );
+    }
   }
 
   isCommandAllowed(command: string): boolean {
@@ -102,5 +143,22 @@ export class ConfigManager {
 
   getMaxConnections(): number {
     return this.config.maxConnections || 5;
+  }
+
+  getPortForwardingService(serviceName: string): any {
+    if (!serviceName) {
+      throw new Error('serviceName is required');
+    }
+
+    const service = this.config.portForwardingServices?.[serviceName];
+    if (!service) {
+      throw new Error(`Port forwarding service '${serviceName}' not found in config.json`);
+    }
+
+    return service;
+  }
+
+  listPortForwardingServices(): string[] {
+    return Object.keys(this.config.portForwardingServices || {});
   }
 }

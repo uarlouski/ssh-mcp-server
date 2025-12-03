@@ -104,6 +104,30 @@ Close an active port forward.
 ### ssh_list_port_forwards
 List all active port forwards (no parameters).
 
+### ssh_port_forward_service
+Start a pre-configured named port forwarding service from config.json.
+
+```json
+{
+  "serviceName": "production-database"
+}
+```
+
+This requires defining services in your config.json:
+```json
+{
+  "portForwardingServices": {
+    "production-database": {
+      "connectionName": "production-db",
+      "localPort": 5432,
+      "remoteHost": "db-internal",
+      "remotePort": 5432,
+      "description": "Production database access"
+    }
+  }
+}
+```
+
 ## Security
 
 - **Command Validation**: Automatically enabled when `allowedCommands` is specified

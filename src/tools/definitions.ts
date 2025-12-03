@@ -42,7 +42,21 @@ export const tools: Tool[] = [
           description: 'Remote port to forward to',
         },
       },
-      required: ['connectionName', 'remoteHost', 'remotePort'],
+      required: ['connectionName', 'localPort', 'remoteHost', 'remotePort'],
+    },
+  },
+  {
+    name: 'ssh_port_forward_service',
+    description: 'Start a pre-configured named port forwarding service from config.json. The service must be defined in the portForwardingServices section of the configuration.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        serviceName: {
+          type: 'string',
+          description: 'Name of the port forwarding service defined in config.json',
+        },
+      },
+      required: ['serviceName'],
     },
   },
   {

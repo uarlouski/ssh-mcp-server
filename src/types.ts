@@ -5,9 +5,18 @@ export interface SSHConfig {
   privateKeyPath: string;
 }
 
+export interface PortForwardingService {
+  connectionName: string;
+  localPort?: number;
+  remoteHost: string;
+  remotePort: number;
+  description?: string;
+}
+
 export interface Config {
   allowedCommands?: string[];
   servers?: Record<string, SSHConfig>;
+  portForwardingServices?: Record<string, PortForwardingService>;
   timeout?: number;
   maxConnections?: number;
 }

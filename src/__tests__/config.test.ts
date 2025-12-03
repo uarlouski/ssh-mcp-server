@@ -546,4 +546,347 @@ describe('ConfigManager', () => {
       await expect(configManager.load()).resolves.not.toThrow();
     });
   });
+
+  describe('Port Forwarding Services Validation', () => {
+    it('should accept valid port forwarding service config', async () => {
+      const mockConfig = {
+        servers: {
+          'test-server': {
+            host: 'example.com',
+            port: 22,
+            username: 'user',
+            privateKeyPath: '/path/to/key',
+          },
+        },
+        portForwardingServices: {
+          'test-service': {
+            connectionName: 'test-server',
+            localPort: 8080,
+            remoteHost: 'localhost',
+            remotePort: 3000,
+            description: 'Test service',
+          },
+        },
+      };
+
+      (existsSync as jest.Mock).mockReturnValue(true);
+      (readFile as jest.Mock).mockResolvedValue(JSON.stringify(mockConfig));
+
+      await expect(configManager.load()).resolves.not.toThrow();
+    });
+
+    it('should accept service without localPort (dynamic allocation)', async () => {
+      const mockConfig = {
+        servers: {
+          'test-server': {
+            host: 'example.com',
+            port: 22,
+            username: 'user',
+            privateKeyPath: '/path/to/key',
+          },
+        },
+        portForwardingServices: {
+          'dynamic-service': {
+            connectionName: 'test-server',
+            remoteHost: 'localhost',
+            remotePort: 3000,
+          },
+        },
+      };
+
+      (existsSync as jest.Mock).mockReturnValue(true);
+      (readFile as jest.Mock).mockResolvedValue(JSON.stringify(mockConfig));
+
+      await expect(configManager.load()).resolves.not.toThrow();
+    });
+
+    it('should reject service with missing connectionName', async () => {
+      const mockConfig = {
+        servers: {
+          'test-server': {
+            host: 'example.com',
+            port: 22,
+            username: 'user',
+            privateKeyPath: '/path/to/key',
+          },
+        },
+        portForwardingServices: {
+          'invalid-service': {
+            remoteHost: 'localhost',
+            remotePort: 3000,
+          },
+        },
+      };
+
+      (existsSync as jest.Mock).mockReturnValue(true);
+      (readFile as jest.Mock).mockResolvedValue(JSON.stringify(mockConfig));
+
+      await expect(configManager.load()).rejects.toThrow(
+        "Invalid port forwarding service 'invalid-service'"
+      );
+      await expect(configManager.load()).rejects.toThrow(
+        'connectionName is required and must reference a server in config.json'
+      );
+    });
+
+    it('should reject service with non-existent connectionName', async () => {
+      const mockConfig = {
+        servers: {
+          'test-server': {
+            host: 'example.com',
+            port: 22,
+            username: 'user',
+            privateKeyPath: '/path/to/key',
+          },
+        },
+        portForwardingServices: {
+          'invalid-service': {
+            connectionName: 'non-existent-server',
+            remoteHost: 'localhost',
+            remotePort: 3000,
+          },
+        },
+      };
+
+      (existsSync as jest.Mock).mockReturnValue(true);
+      (readFile as jest.Mock).mockResolvedValue(JSON.stringify(mockConfig));
+
+      await expect(configManager.load()).rejects.toThrow(
+        "connectionName 'non-existent-server' does not exist in servers"
+      );
+    });
+
+    it('should reject service with missing remoteHost', async () => {
+      const mockConfig = {
+        servers: {
+          'test-server': {
+            host: 'example.com',
+            port: 22,
+            username: 'user',
+            privateKeyPath: '/path/to/key',
+          },
+        },
+        portForwardingServices: {
+          'invalid-service': {
+            connectionName: 'test-server',
+            remotePort: 3000,
+          },
+        },
+      };
+
+      (existsSync as jest.Mock).mockReturnValue(true);
+      (readFile as jest.Mock).mockResolvedValue(JSON.stringify(mockConfig));
+
+      await expect(configManager.load()).rejects.toThrow(
+        'remoteHost is required and must be a non-empty string'
+      );
+    });
+
+    it('should reject service with missing remotePort', async () => {
+      const mockConfig = {
+        servers: {
+          'test-server': {
+            host: 'example.com',
+            port: 22,
+            username: 'user',
+            privateKeyPath: '/path/to/key',
+          },
+        },
+        portForwardingServices: {
+          'invalid-service': {
+            connectionName: 'test-server',
+            remoteHost: 'localhost',
+          },
+        },
+      };
+
+      (existsSync as jest.Mock).mockReturnValue(true);
+      (readFile as jest.Mock).mockResolvedValue(JSON.stringify(mockConfig));
+
+      await expect(configManager.load()).rejects.toThrow(
+        'remotePort must be a number between 1 and 65535'
+      );
+    });
+
+    it('should reject service with invalid remotePort', async () => {
+      const mockConfig = {
+        servers: {
+          'test-server': {
+            host: 'example.com',
+            port: 22,
+            username: 'user',
+            privateKeyPath: '/path/to/key',
+          },
+        },
+        portForwardingServices: {
+          'invalid-service': {
+            connectionName: 'test-server',
+            remoteHost: 'localhost',
+            remotePort: 99999,
+          },
+        },
+      };
+
+      (existsSync as jest.Mock).mockReturnValue(true);
+      (readFile as jest.Mock).mockResolvedValue(JSON.stringify(mockConfig));
+
+      await expect(configManager.load()).rejects.toThrow(
+        'remotePort must be a number between 1 and 65535'
+      );
+    });
+
+    it('should reject service with invalid localPort (negative)', async () => {
+      const mockConfig = {
+        servers: {
+          'test-server': {
+            host: 'example.com',
+            port: 22,
+            username: 'user',
+            privateKeyPath: '/path/to/key',
+          },
+        },
+        portForwardingServices: {
+          'invalid-service': {
+            connectionName: 'test-server',
+            localPort: -1,
+            remoteHost: 'localhost',
+            remotePort: 3000,
+          },
+        },
+      };
+
+      (existsSync as jest.Mock).mockReturnValue(true);
+      (readFile as jest.Mock).mockResolvedValue(JSON.stringify(mockConfig));
+
+      await expect(configManager.load()).rejects.toThrow(
+        'localPort must be a number between 0 and 65535'
+      );
+    });
+
+    it('should accept service with localPort of 0 (dynamic allocation)', async () => {
+      const mockConfig = {
+        servers: {
+          'test-server': {
+            host: 'example.com',
+            port: 22,
+            username: 'user',
+            privateKeyPath: '/path/to/key',
+          },
+        },
+        portForwardingServices: {
+          'dynamic-service': {
+            connectionName: 'test-server',
+            localPort: 0,
+            remoteHost: 'localhost',
+            remotePort: 3000,
+          },
+        },
+      };
+
+      (existsSync as jest.Mock).mockReturnValue(true);
+      (readFile as jest.Mock).mockResolvedValue(JSON.stringify(mockConfig));
+
+      await expect(configManager.load()).resolves.not.toThrow();
+    });
+  });
+
+  describe('getPortForwardingService', () => {
+    it('should return service config when serviceName is valid', async () => {
+      const mockConfig = {
+        servers: {
+          'test-server': {
+            host: 'example.com',
+            port: 22,
+            username: 'user',
+            privateKeyPath: '/path/to/key',
+          },
+        },
+        portForwardingServices: {
+          'my-service': {
+            connectionName: 'test-server',
+            localPort: 8080,
+            remoteHost: 'localhost',
+            remotePort: 3000,
+            description: 'Test service',
+          },
+        },
+      };
+
+      (existsSync as jest.Mock).mockReturnValue(true);
+      (readFile as jest.Mock).mockResolvedValue(JSON.stringify(mockConfig));
+
+      await configManager.load();
+
+      const service = configManager.getPortForwardingService('my-service');
+      expect(service).toEqual(mockConfig.portForwardingServices['my-service']);
+    });
+
+    it('should throw error when serviceName is empty', async () => {
+      await expect(() => configManager.getPortForwardingService('')).toThrow(
+        'serviceName is required'
+      );
+    });
+
+    it('should throw error when service not found', async () => {
+      const mockConfig = {
+        portForwardingServices: {},
+      };
+
+      (existsSync as jest.Mock).mockReturnValue(true);
+      (readFile as jest.Mock).mockResolvedValue(JSON.stringify(mockConfig));
+
+      await configManager.load();
+
+      expect(() => configManager.getPortForwardingService('nonexistent')).toThrow(
+        "Port forwarding service 'nonexistent' not found in config.json"
+      );
+    });
+  });
+
+  describe('listPortForwardingServices', () => {
+    it('should return list of service names', async () => {
+      const mockConfig = {
+        servers: {
+          'test-server': {
+            host: 'example.com',
+            port: 22,
+            username: 'user',
+            privateKeyPath: '/path/to/key',
+          },
+        },
+        portForwardingServices: {
+          'service1': {
+            connectionName: 'test-server',
+            remoteHost: 'localhost',
+            remotePort: 3000,
+          },
+          'service2': {
+            connectionName: 'test-server',
+            remoteHost: 'localhost',
+            remotePort: 4000,
+          },
+        },
+      };
+
+      (existsSync as jest.Mock).mockReturnValue(true);
+      (readFile as jest.Mock).mockResolvedValue(JSON.stringify(mockConfig));
+
+      await configManager.load();
+
+      const services = configManager.listPortForwardingServices();
+      expect(services).toEqual(['service1', 'service2']);
+    });
+
+    it('should return empty array when no services configured', async () => {
+      const mockConfig = {};
+
+      (existsSync as jest.Mock).mockReturnValue(true);
+      (readFile as jest.Mock).mockResolvedValue(JSON.stringify(mockConfig));
+
+      await configManager.load();
+
+      const services = configManager.listPortForwardingServices();
+      expect(services).toEqual([]);
+    });
+  });
 });

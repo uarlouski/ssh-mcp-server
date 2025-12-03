@@ -14,6 +14,7 @@ import {
   handlePortForward,
   handleClosePortForward,
   handleListPortForwards,
+  handleForwardService,
   type HandlerContext,
 } from './handlers/index.js';
 import { join } from 'path';
@@ -57,6 +58,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       'ssh_port_forward': handlePortForward,
       'ssh_close_port_forward': handleClosePortForward,
       'ssh_list_port_forwards': handleListPortForwards,
+      'ssh_port_forward_service': handleForwardService,
     };
 
     const handler = toolHandlers[name];

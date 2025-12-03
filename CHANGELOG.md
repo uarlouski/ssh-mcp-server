@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - Dynamic port allocation for `ssh_port_forward` tool (optional `localPort`)
+- Connect to named port forwarding services via `ssh_port_forward_service` tool
 
 ## [1.0.0] - 2025-12-02
 
