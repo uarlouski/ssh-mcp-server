@@ -48,7 +48,7 @@ No installation required! Add to your MCP client configuration:
       "command": "npx",
       "args": [
         "@uarlouski/ssh-mcp-server@latest",
-        "--configPath=/path/to/your/config.json"
+        "--configPath=/path/to/your/ssh-mcp-config.json"
       ]
     }
   }
@@ -68,7 +68,7 @@ Then configure with:
   "mcpServers": {
     "ssh": {
       "command": "ssh-mcp-server",
-      "args": ["--configPath=/path/to/your/config.json"]
+      "args": ["--configPath=/path/to/your/ssh-mcp-config.json"]
     }
   }
 }
@@ -87,7 +87,7 @@ ssh-copy-id -i ~/.ssh/deploy_key.pub user@your-server.com
 
 ### 2. Create Configuration File
 
-Create a `config.json` file:
+Create a `ssh-mcp-config.json` file:
 
 ```json
 {
@@ -113,7 +113,7 @@ Add the server to your MCP client (e.g., GitHub Copilot):
       "command": "npx",
       "args": [
         "@uarlouski/ssh-mcp-server@latest",
-        "--configPath=/Users/yourname/config.json"
+        "--configPath=/Users/yourname/ssh-mcp-config.json"
       ]
     }
   }
@@ -361,7 +361,7 @@ This is equivalent to calling `ssh_port_forward` with the pre-configured paramet
    - Uses robust parsing to prevent command injection
 
 2. **Server Allowlist**
-   - Only pre-configured servers in `config.json` can be accessed
+   - Only pre-configured servers in `ssh-mcp-config.json` can be accessed
    - No dynamic server connections allowed
    - Prevents unauthorized access to infrastructure
 
