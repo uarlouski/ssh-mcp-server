@@ -18,10 +18,24 @@ import {
   type HandlerContext,
 } from './handlers/index.js';
 import { join } from 'path';
+import { existsSync } from 'fs';
 
 const args = process.argv.slice(2);
 const configPathArg = args.find(arg => arg.startsWith('--configPath='));
-const configPath = configPathArg ? configPathArg.split('=')[1] : join(process.cwd(), 'config.json');
+
+let configPath: string;
+if (configPathArg) {
+  configPath = configPathArg.split('=')[1];
+} else {
+  const defaultConfigs = ['ssh-mcp-config.json', 'config.json'];
+  const found = defaultConfigs.find(name => existsSync(join(process.cwd(), name)));
+  
+  if (found === 'config.json') {
+    console.error('⚠️  Warning: config.json is deprecated. Please rename to ssh-mcp-config.json');
+  }
+  
+  configPath = join(process.cwd(), found || 'ssh-mcp-config.json');
+}
 
 const configManager = new ConfigManager(configPath);
 const sshManager = new SSHConnectionManager();
