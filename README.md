@@ -20,6 +20,7 @@ A Model Context Protocol (MCP) server that provides secure SSH capabilities for 
 
 - 🔐 **Secure SSH Command Execution** - Execute commands on remote servers with granular security controls
 - 🛡️ **Host Allowlisting** - Only connect to pre-configured, trusted servers
+- 📁 **SFTP File Operations** - Upload, download, list, and delete files on remote servers
 - 🌉 **SSH Port Forwarding** - Create secure tunnels to access remote services
 - 🔄 **Connection Pooling** - Persistent connections with automatic management
 - 🔑 **SSH Key Authentication** - Secure authentication using SSH private keys
@@ -350,6 +351,128 @@ Start a pre-configured named port forwarding service from your config.
 
 This is equivalent to calling `ssh_port_forward` with the pre-configured parameters.
 
+### `ssh_upload_file`
+
+Upload a file from local system to remote server via SFTP.
+
+**Parameters:**
+- `connectionName` (string, required): Name of the server from your config
+- `localPath` (string, required): Local file path to upload
+- `remotePath` (string, required): Remote destination path
+- `permissions` (string, optional): File permissions in octal format (e.g., "0644", "0755")
+
+**Example:**
+```json
+{
+  "connectionName": "app-server",
+  "localPath": "~/configs/app.json",
+  "remotePath": "/var/www/app/config.json",
+  "permissions": "0644"
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "bytesTransferred": 1024,
+  "message": "Successfully uploaded ~/configs/app.json to /var/www/app/config.json",
+  "localPath": "~/configs/app.json",
+  "remotePath": "/var/www/app/config.json"
+}
+```
+
+### `ssh_download_file`
+
+Download a file from remote server to local system via SFTP.
+
+**Parameters:**
+- `connectionName` (string, required): Name of the server from your config
+- `remotePath` (string, required): Remote file path to download
+- `localPath` (string, required): Local destination path
+
+**Example:**
+```json
+{
+  "connectionName": "app-server",
+  "remotePath": "/var/log/app/error.log",
+  "localPath": "~/downloads/error.log"
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "bytesTransferred": 2048,
+  "message": "Successfully downloaded /var/log/app/error.log to ~/downloads/error.log",
+  "remotePath": "/var/log/app/error.log",
+  "localPath": "~/downloads/error.log"
+}
+```
+
+### `ssh_list_remote_files`
+
+List files in a remote directory via SFTP.
+
+**Parameters:**
+- `connectionName` (string, required): Name of the server from your config
+- `remotePath` (string, required): Remote directory path to list
+- `pattern` (string, optional): Glob pattern to filter files (e.g., "*.log", "*.json")
+
+**Example:**
+```json
+{
+  "connectionName": "app-server",
+  "remotePath": "/var/log/app",
+  "pattern": ".*\\.log$"
+}
+```
+
+**Response:**
+```json
+{
+  "remotePath": "/var/log/app",
+  "pattern": ".*\\.log$",
+  "totalCount": 3,
+  "files": [
+    {
+      "name": "error.log",
+      "size": 10485760,
+      "modified": "2024-12-04T12:00:00.000Z",
+      "permissions": "100644",
+      "isDirectory": false,
+      "isFile": true
+    }
+  ]
+}
+```
+
+### `ssh_delete_remote_file`
+
+Delete a file on the remote server via SFTP.
+
+**Parameters:**
+- `connectionName` (string, required): Name of the server from your config
+- `remotePath` (string, required): Remote file path to delete
+
+**Example:**
+```json
+{
+  "connectionName": "app-server",
+  "remotePath": "/tmp/old-backup.tar.gz"
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Successfully deleted /tmp/old-backup.tar.gz",
+  "remotePath": "/tmp/old-backup.tar.gz"
+}
+```
+
 ## Security
 
 ### Built-in Security Features
@@ -474,6 +597,79 @@ The assistant will execute:
 {
   "connectionName": "app-server",
   "command": "docker restart nginx"
+}
+```
+
+### Example 4: File Management and Log Analysis
+
+**Config:**
+```json
+{
+  "servers": {
+    "app-server": {
+      "host": "app-01.example.com",
+      "username": "deploy",
+      "privateKeyPath": "~/.ssh/deploy_key"
+    }
+  }
+}
+```
+
+**Usage:**
+
+**Upload a configuration file:**
+```
+Ask your AI assistant: "Upload my local config.json to /var/www/app/config.json on app-server with 644 permissions"
+```
+
+The assistant will execute:
+```json
+{
+  "connectionName": "app-server",
+  "localPath": "~/config.json",
+  "remotePath": "/var/www/app/config.json",
+  "permissions": "0644"
+}
+```
+
+**Download logs for analysis:**
+```
+Ask your AI assistant: "Download the error log from /var/log/app/error.log on app-server"
+```
+
+The assistant will execute:
+```json
+{
+  "connectionName": "app-server",
+  "remotePath": "/var/log/app/error.log",
+  "localPath": "~/downloads/error.log"
+}
+```
+
+**List and filter log files:**
+```
+Ask your AI assistant: "Show me all .log files in /var/log/app on app-server"
+```
+
+The assistant will execute:
+```json
+{
+  "connectionName": "app-server",
+  "remotePath": "/var/log/app",
+  "pattern": ".*\\.log$"
+}
+```
+
+**Clean up old backups:**
+```
+Ask your AI assistant: "Delete the old backup at /tmp/backup-2024-01-01.tar.gz on app-server"
+```
+
+The assistant will execute:
+```json
+{
+  "connectionName": "app-server",
+  "remotePath": "/tmp/backup-2024-01-01.tar.gz"
 }
 ```
 

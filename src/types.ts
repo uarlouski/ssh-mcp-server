@@ -36,3 +36,32 @@ export interface PortForwardInfo {
   remotePort: number;
   status: 'active';
 }
+
+export interface FileInfo {
+  filename: string;
+  longname: string;
+  attrs: {
+    mode: number;
+    uid: number;
+    gid: number;
+    size: number;
+    atime: number;
+    mtime: number;
+  };
+}
+
+export interface FileTransferResult {
+  success: boolean;
+  bytesTransferred?: number;
+  message: string;
+}
+
+export interface FileListResult {
+  files: FileInfo[];
+  totalCount: number;
+}
+
+export interface FileDeleteResult {
+  success: boolean;
+  message: string;
+}

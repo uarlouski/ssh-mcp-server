@@ -3,4 +3,8 @@ export { handlePortForward } from './port-forward.js';
 export { handleClosePortForward } from './close-port-forward.js';
 export { handleListPortForwards } from './list-port-forwards.js';
 export { handleForwardService } from './forward-service.js';
+export { handleUploadFile } from './upload-file.js';
+export { handleDownloadFile } from './download-file.js';
+export { handleListRemoteFiles } from './list-remote-files.js';
+export { handleDeleteRemoteFile } from './delete-remote-file.js';
 export type { HandlerContext } from './execute-command.js';
