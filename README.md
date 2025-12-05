@@ -3,7 +3,7 @@
 A Model Context Protocol (MCP) server that provides secure SSH capabilities for AI assistants, enabling remote command execution and port forwarding with comprehensive security controls.
 
 [![npm version](https://badge.fury.io/js/@uarlouski%2Fssh-mcp-server.svg)](https://www.npmjs.com/package/@uarlouski/ssh-mcp-server)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 
 ## Table of Contents
 
