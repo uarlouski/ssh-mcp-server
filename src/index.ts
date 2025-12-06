@@ -49,7 +49,7 @@ await configManager.load();
 const server = new Server(
   {
     name: 'ssh-mcp-server',
-    version: '1.1.0',
+    version: '1.2.0',
   },
   {
     capabilities: {
