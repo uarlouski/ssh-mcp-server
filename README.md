@@ -675,7 +675,7 @@ The assistant will execute:
 
 ## License
 
-MIT - see [LICENSE](LICENSE) file for details.
+Apache 2.0 - see [LICENSE](LICENSE) file for details.
 
 ---
 

@@ -50,7 +50,7 @@
     "llm-tools"
   ],
   "author": "Uladzislau Arlouski <uarlouski@gmail.com>",
-  "license": "MIT",
+  "license": "Apache 2.0",
   "repository": {
     "type": "git",
     "url": "https://github.com/uarlouski/ssh-mcp-server.git"
