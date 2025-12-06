@@ -1,10 +1,12 @@
 import { SSHConnectionManager } from '../ssh-manager.js';
 import type { SSHConfig } from '../types.js';
 import { Client } from 'ssh2';
-import { readFile } from 'fs/promises';
+import { readFile, stat } from 'fs/promises';
+import { createReadStream, createWriteStream } from 'fs';
 
 jest.mock('ssh2');
 jest.mock('fs/promises');
+jest.mock('fs');
 
 describe('SSHConnectionManager', () => {
   let sshManager: SSHConnectionManager;
@@ -687,6 +689,484 @@ describe('SSHConnectionManager', () => {
       forwards = sshManager.listPortForwards();
       expect(forwards).toHaveLength(1);
       expect(forwards[0].localPort).toBe(8081);
+    });
+  });
+
+  describe('SFTP Operations', () => {
+    const sshConfig: SSHConfig = {
+      host: 'example.com',
+      port: 22,
+      username: 'user',
+      privateKeyPath: '/path/to/key',
+    };
+
+    let mockSFTP: any;
+
+    beforeEach(() => {
+      const mockKey = '-----BEGIN RSA PRIVATE KEY-----\ntest\n-----END RSA PRIVATE KEY-----';
+      (readFile as jest.Mock).mockResolvedValue(mockKey);
+
+      mockSFTP = {
+        createReadStream: jest.fn(),
+        createWriteStream: jest.fn(),
+        readdir: jest.fn(),
+        unlink: jest.fn(),
+        chmod: jest.fn(),
+        end: jest.fn(),
+      };
+
+      mockClient.on.mockImplementation((event: string, callback: any) => {
+        if (event === 'ready') {
+          setTimeout(() => callback(), 0);
+        }
+        return mockClient;
+      });
+
+      (mockClient as any).sftp = jest.fn((callback: any) => {
+        setTimeout(() => callback(null, mockSFTP), 0);
+      });
+    });
+
+    describe('uploadFile', () => {
+      it('should upload a file successfully', async () => {
+        const mockStats = { isFile: () => true, size: 100 };
+        (stat as jest.Mock).mockResolvedValue(mockStats);
+
+        const mockReadStream: any = {
+          pipe: jest.fn(),
+          on: jest.fn(),
+        };
+
+        const mockWriteStream: any = {
+          on: jest.fn(),
+        };
+
+        (createReadStream as jest.Mock).mockReturnValue(mockReadStream);
+        mockSFTP.createWriteStream.mockReturnValue(mockWriteStream);
+
+        mockReadStream.on.mockImplementation((event: string, callback: any) => {
+          if (event === 'data') {
+            setTimeout(() => callback(Buffer.from('test data')), 0);
+          }
+          return mockReadStream;
+        });
+
+        mockWriteStream.on.mockImplementation((event: string, callback: any) => {
+          if (event === 'close') {
+            setTimeout(() => callback(), 10);
+          }
+          return mockWriteStream;
+        });
+
+        const result = await sshManager.uploadFile(
+          sshConfig,
+          '/local/test.txt',
+          '/remote/test.txt'
+        );
+
+        expect(result.success).toBe(true);
+        expect(result.bytesTransferred).toBeGreaterThan(0);
+        expect(result.message).toContain('Successfully uploaded');
+        expect(createReadStream).toHaveBeenCalledWith('/local/test.txt');
+        expect(mockSFTP.createWriteStream).toHaveBeenCalledWith('/remote/test.txt');
+        expect(mockSFTP.end).toHaveBeenCalled();
+      });
+
+      it('should upload file with custom permissions', async () => {
+        const mockStats = { isFile: () => true, size: 100 };
+        (stat as jest.Mock).mockResolvedValue(mockStats);
+
+        const mockReadStream: any = {
+          pipe: jest.fn(),
+          on: jest.fn().mockReturnThis(),
+        };
+
+        const mockWriteStream: any = {
+          on: jest.fn(),
+        };
+
+        (createReadStream as jest.Mock).mockReturnValue(mockReadStream);
+        mockSFTP.createWriteStream.mockReturnValue(mockWriteStream);
+
+        mockWriteStream.on.mockImplementation((event: string, callback: any) => {
+          if (event === 'close') {
+            setTimeout(async () => await callback(), 10);
+          }
+          return mockWriteStream;
+        });
+
+        mockSFTP.chmod.mockImplementation((path: string, mode: number, callback: any) => {
+          setTimeout(() => callback(null), 0);
+        });
+
+        const result = await sshManager.uploadFile(
+          sshConfig,
+          '/local/test.txt',
+          '/remote/test.txt',
+          '0755'
+        );
+
+        expect(result.success).toBe(true);
+        expect(mockSFTP.chmod).toHaveBeenCalledWith('/remote/test.txt', 0o755, expect.any(Function));
+      });
+
+      it('should fail when local file does not exist', async () => {
+        (stat as jest.Mock).mockRejectedValue(new Error('ENOENT: no such file'));
+
+        const result = await sshManager.uploadFile(
+          sshConfig,
+          '/local/nonexistent.txt',
+          '/remote/test.txt'
+        );
+
+        expect(result.success).toBe(false);
+        expect(result.message).toContain('Upload failed');
+      });
+
+      it('should fail when local path is not a file', async () => {
+        const mockStats = { isFile: () => false };
+        (stat as jest.Mock).mockResolvedValue(mockStats);
+
+        const result = await sshManager.uploadFile(
+          sshConfig,
+          '/local/directory',
+          '/remote/test.txt'
+        );
+
+        expect(result.success).toBe(false);
+        expect(result.message).toContain('is not a file');
+      });
+
+      it('should handle write stream errors', async () => {
+        const mockStats = { isFile: () => true, size: 100 };
+        (stat as jest.Mock).mockResolvedValue(mockStats);
+
+        const mockReadStream: any = {
+          pipe: jest.fn(),
+          on: jest.fn().mockReturnThis(),
+        };
+
+        const mockWriteStream: any = {
+          on: jest.fn(),
+        };
+
+        (createReadStream as jest.Mock).mockReturnValue(mockReadStream);
+        mockSFTP.createWriteStream.mockReturnValue(mockWriteStream);
+
+        mockWriteStream.on.mockImplementation((event: string, callback: any) => {
+          if (event === 'error') {
+            setTimeout(() => callback(new Error('Write error')), 0);
+          }
+          return mockWriteStream;
+        });
+
+        await expect(
+          sshManager.uploadFile(sshConfig, '/local/test.txt', '/remote/test.txt')
+        ).rejects.toThrow('Write error');
+
+        expect(mockSFTP.end).toHaveBeenCalled();
+      });
+    });
+
+    describe('downloadFile', () => {
+      it('should download a file successfully', async () => {
+        const mockReadStream: any = {
+          pipe: jest.fn(),
+          on: jest.fn(),
+        };
+
+        const mockWriteStream: any = {
+          on: jest.fn(),
+        };
+
+        mockSFTP.createReadStream.mockReturnValue(mockReadStream);
+        (createWriteStream as jest.Mock).mockReturnValue(mockWriteStream);
+
+        mockReadStream.on.mockImplementation((event: string, callback: any) => {
+          if (event === 'data') {
+            setTimeout(() => callback(Buffer.from('downloaded data')), 0);
+          }
+          return mockReadStream;
+        });
+
+        mockWriteStream.on.mockImplementation((event: string, callback: any) => {
+          if (event === 'close') {
+            setTimeout(() => callback(), 10);
+          }
+          return mockWriteStream;
+        });
+
+        const result = await sshManager.downloadFile(
+          sshConfig,
+          '/remote/test.txt',
+          '/local/test.txt'
+        );
+
+        expect(result.success).toBe(true);
+        expect(result.bytesTransferred).toBeGreaterThan(0);
+        expect(result.message).toContain('Successfully downloaded');
+        expect(mockSFTP.createReadStream).toHaveBeenCalledWith('/remote/test.txt');
+        expect(createWriteStream).toHaveBeenCalledWith('/local/test.txt');
+        expect(mockSFTP.end).toHaveBeenCalled();
+      });
+
+      it('should handle read stream errors', async () => {
+        const mockReadStream: any = {
+          pipe: jest.fn(),
+          on: jest.fn(),
+        };
+
+        const mockWriteStream: any = {
+          on: jest.fn().mockReturnThis(),
+        };
+
+        mockSFTP.createReadStream.mockReturnValue(mockReadStream);
+        (createWriteStream as jest.Mock).mockReturnValue(mockWriteStream);
+
+        mockReadStream.on.mockImplementation((event: string, callback: any) => {
+          if (event === 'error') {
+            setTimeout(() => callback(new Error('Read error')), 0);
+          }
+          return mockReadStream;
+        });
+
+        await expect(
+          sshManager.downloadFile(sshConfig, '/remote/test.txt', '/local/test.txt')
+        ).rejects.toThrow('Read error');
+
+        expect(mockSFTP.end).toHaveBeenCalled();
+      });
+
+      it('should handle write stream errors during download', async () => {
+        const mockReadStream: any = {
+          pipe: jest.fn(),
+          on: jest.fn().mockReturnThis(),
+        };
+
+        const mockWriteStream: any = {
+          on: jest.fn(),
+        };
+
+        mockSFTP.createReadStream.mockReturnValue(mockReadStream);
+        (createWriteStream as jest.Mock).mockReturnValue(mockWriteStream);
+
+        mockWriteStream.on.mockImplementation((event: string, callback: any) => {
+          if (event === 'error') {
+            setTimeout(() => callback(new Error('Write error')), 0);
+          }
+          return mockWriteStream;
+        });
+
+        await expect(
+          sshManager.downloadFile(sshConfig, '/remote/test.txt', '/local/test.txt')
+        ).rejects.toThrow('Write error');
+      });
+    });
+
+    describe('listRemoteFiles', () => {
+      it('should list files in remote directory', async () => {
+        const mockFiles = [
+          {
+            filename: 'file1.txt',
+            longname: '-rw-r--r-- 1 user group 100 Jan 1 file1.txt',
+            attrs: {
+              mode: 33188,
+              uid: 1000,
+              gid: 1000,
+              size: 100,
+              atime: 1609459200,
+              mtime: 1609459200,
+            },
+          },
+          {
+            filename: 'file2.log',
+            longname: '-rw-r--r-- 1 user group 200 Jan 1 file2.log',
+            attrs: {
+              mode: 33188,
+              uid: 1000,
+              gid: 1000,
+              size: 200,
+              atime: 1609459200,
+              mtime: 1609459200,
+            },
+          },
+        ];
+
+        mockSFTP.readdir.mockImplementation((path: string, callback: any) => {
+          setTimeout(() => callback(null, mockFiles), 0);
+        });
+
+        const result = await sshManager.listRemoteFiles(sshConfig, '/remote/dir');
+
+        expect(result.files).toHaveLength(2);
+        expect(result.totalCount).toBe(2);
+        expect(result.files[0].filename).toBe('file1.txt');
+        expect(result.files[1].filename).toBe('file2.log');
+        expect(mockSFTP.readdir).toHaveBeenCalledWith('/remote/dir', expect.any(Function));
+        expect(mockSFTP.end).toHaveBeenCalled();
+      });
+
+      it('should filter files by pattern', async () => {
+        const mockFiles = [
+          {
+            filename: 'file1.txt',
+            longname: '-rw-r--r-- 1 user group 100 Jan 1 file1.txt',
+            attrs: {
+              mode: 33188,
+              uid: 1000,
+              gid: 1000,
+              size: 100,
+              atime: 1609459200,
+              mtime: 1609459200,
+            },
+          },
+          {
+            filename: 'file2.log',
+            longname: '-rw-r--r-- 1 user group 200 Jan 1 file2.log',
+            attrs: {
+              mode: 33188,
+              uid: 1000,
+              gid: 1000,
+              size: 200,
+              atime: 1609459200,
+              mtime: 1609459200,
+            },
+          },
+          {
+            filename: 'file3.txt',
+            longname: '-rw-r--r-- 1 user group 150 Jan 1 file3.txt',
+            attrs: {
+              mode: 33188,
+              uid: 1000,
+              gid: 1000,
+              size: 150,
+              atime: 1609459200,
+              mtime: 1609459200,
+            },
+          },
+        ];
+
+        mockSFTP.readdir.mockImplementation((path: string, callback: any) => {
+          setTimeout(() => callback(null, mockFiles), 0);
+        });
+
+        const result = await sshManager.listRemoteFiles(sshConfig, '/remote/dir', '.*\\.txt$');
+
+        expect(result.files).toHaveLength(2);
+        expect(result.totalCount).toBe(2);
+        expect(result.files.every(f => f.filename.endsWith('.txt'))).toBe(true);
+      });
+
+      it('should handle readdir errors', async () => {
+        mockSFTP.readdir.mockImplementation((path: string, callback: any) => {
+          setTimeout(() => callback(new Error('Directory not found')), 0);
+        });
+
+        await expect(
+          sshManager.listRemoteFiles(sshConfig, '/remote/nonexistent')
+        ).rejects.toThrow('Failed to list files');
+
+        expect(mockSFTP.end).toHaveBeenCalled();
+      });
+
+      it('should return file attributes correctly', async () => {
+        const mockFiles = [
+          {
+            filename: 'test.txt',
+            longname: '-rw-r--r-- 1 user group 100 Jan 1 test.txt',
+            attrs: {
+              mode: 33188,
+              uid: 1000,
+              gid: 1000,
+              size: 100,
+              atime: 1609459200,
+              mtime: 1609459200,
+            },
+          },
+        ];
+
+        mockSFTP.readdir.mockImplementation((path: string, callback: any) => {
+          setTimeout(() => callback(null, mockFiles), 0);
+        });
+
+        const result = await sshManager.listRemoteFiles(sshConfig, '/remote/dir');
+
+        expect(result.files[0]).toHaveProperty('filename', 'test.txt');
+        expect(result.files[0]).toHaveProperty('attrs');
+        expect(result.files[0].attrs).toHaveProperty('size', 100);
+        expect(result.files[0].attrs).toHaveProperty('mode', 33188);
+      });
+    });
+
+    describe('deleteRemoteFile', () => {
+      it('should delete a file successfully', async () => {
+        mockSFTP.unlink.mockImplementation((path: string, callback: any) => {
+          setTimeout(() => callback(null), 0);
+        });
+
+        const result = await sshManager.deleteRemoteFile(sshConfig, '/remote/test.txt');
+
+        expect(result.success).toBe(true);
+        expect(result.message).toContain('Successfully deleted');
+        expect(mockSFTP.unlink).toHaveBeenCalledWith('/remote/test.txt', expect.any(Function));
+        expect(mockSFTP.end).toHaveBeenCalled();
+      });
+
+      it('should handle unlink errors', async () => {
+        mockSFTP.unlink.mockImplementation((path: string, callback: any) => {
+          setTimeout(() => callback(new Error('File not found')), 0);
+        });
+
+        const result = await sshManager.deleteRemoteFile(sshConfig, '/remote/nonexistent.txt');
+
+        expect(result.success).toBe(false);
+        expect(result.message).toContain('Delete failed');
+        expect(mockSFTP.end).toHaveBeenCalled();
+      });
+    });
+
+    describe('SFTP connection', () => {
+      it('should handle SFTP connection errors', async () => {
+        (mockClient as any).sftp = jest.fn((callback: any) => {
+          setTimeout(() => callback(new Error('SFTP subsystem not available')), 0);
+        });
+
+        const result = await sshManager.uploadFile(sshConfig, '/local/test.txt', '/remote/test.txt');
+
+        expect(result.success).toBe(false);
+        expect(result.message).toContain('SFTP subsystem not available');
+      });
+
+      it('should reuse SSH connection for multiple SFTP operations', async () => {
+        const mockStats = { isFile: () => true, size: 100 };
+        (stat as jest.Mock).mockResolvedValue(mockStats);
+
+        const mockReadStream: any = {
+          pipe: jest.fn(),
+          on: jest.fn().mockReturnThis(),
+        };
+
+        const mockWriteStream: any = {
+          on: jest.fn(),
+        };
+
+        (createReadStream as jest.Mock).mockReturnValue(mockReadStream);
+        mockSFTP.createWriteStream.mockReturnValue(mockWriteStream);
+
+        mockWriteStream.on.mockImplementation((event: string, callback: any) => {
+          if (event === 'close') {
+            setTimeout(() => callback(), 10);
+          }
+          return mockWriteStream;
+        });
+
+        await sshManager.uploadFile(sshConfig, '/local/test1.txt', '/remote/test1.txt');
+
+        await sshManager.uploadFile(sshConfig, '/local/test2.txt', '/remote/test2.txt');
+
+        expect(Client).toHaveBeenCalledTimes(1);
+        expect(mockClient.sftp).toHaveBeenCalledTimes(2);
+      });
     });
   });
 });

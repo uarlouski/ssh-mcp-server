@@ -85,4 +85,92 @@ export const tools: Tool[] = [
       properties: {},
     },
   },
+  {
+    name: 'ssh_upload_file',
+    description: 'Upload a file from local system to remote server via SFTP. The connectionName must reference a pre-configured server in config.json.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        connectionName: {
+          type: 'string',
+          description: 'Name of a pre-configured SSH server from config.json',
+        },
+        localPath: {
+          type: 'string',
+          description: 'Local file path to upload',
+        },
+        remotePath: {
+          type: 'string',
+          description: 'Remote destination path',
+        },
+        permissions: {
+          type: 'string',
+          description: 'Optional file permissions in octal format (e.g., "0644", "0755")',
+        },
+      },
+      required: ['connectionName', 'localPath', 'remotePath'],
+    },
+  },
+  {
+    name: 'ssh_download_file',
+    description: 'Download a file from remote server to local system via SFTP. The connectionName must reference a pre-configured server in config.json.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        connectionName: {
+          type: 'string',
+          description: 'Name of a pre-configured SSH server from config.json',
+        },
+        remotePath: {
+          type: 'string',
+          description: 'Remote file path to download',
+        },
+        localPath: {
+          type: 'string',
+          description: 'Local destination path',
+        },
+      },
+      required: ['connectionName', 'remotePath', 'localPath'],
+    },
+  },
+  {
+    name: 'ssh_list_remote_files',
+    description: 'List files in a remote directory via SFTP. The connectionName must reference a pre-configured server in config.json.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        connectionName: {
+          type: 'string',
+          description: 'Name of a pre-configured SSH server from config.json',
+        },
+        remotePath: {
+          type: 'string',
+          description: 'Remote directory path to list',
+        },
+        pattern: {
+          type: 'string',
+          description: 'Optional glob pattern to filter files (e.g., "*.log", "*.json")',
+        },
+      },
+      required: ['connectionName', 'remotePath'],
+    },
+  },
+  {
+    name: 'ssh_delete_remote_file',
+    description: 'Delete a file on the remote server via SFTP. The connectionName must reference a pre-configured server in config.json.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        connectionName: {
+          type: 'string',
+          description: 'Name of a pre-configured SSH server from config.json',
+        },
+        remotePath: {
+          type: 'string',
+          description: 'Remote file path to delete',
+        },
+      },
+      required: ['connectionName', 'remotePath'],
+    },
+  },
 ];

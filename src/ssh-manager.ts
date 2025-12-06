@@ -1,8 +1,9 @@
-import { Client, ClientChannel, ConnectConfig } from 'ssh2';
-import { readFile } from 'fs/promises';
-import type { SSHConfig, CommandResult, PortForwardInfo } from './types.js';
+import { Client, ClientChannel, ConnectConfig, SFTPWrapper } from 'ssh2';
+import { readFile, stat } from 'fs/promises';
+import type { SSHConfig, CommandResult, PortForwardInfo, FileInfo, FileTransferResult, FileListResult, FileDeleteResult } from './types.js';
 import { createServer, Server as NetServer } from 'net';
 import { expandTilde } from './utils.js';
+import { createReadStream, createWriteStream } from 'fs';
 
 interface ForwardingInfo {
   config: SSHConfig;
@@ -242,6 +243,219 @@ export class SSHConnectionManager {
     for (const [key, client] of this.connections.entries()) {
       client.end();
       this.connections.delete(key);
+    }
+  }
+
+  private async getSFTP(config: SSHConfig): Promise<SFTPWrapper> {
+    const client = await this.getConnection(config);
+
+    return new Promise((resolve, reject) => {
+      client.sftp((err, sftp) => {
+        if (err) {
+          reject(err);
+          return;
+        }
+        resolve(sftp);
+      });
+    });
+  }
+
+  async uploadFile(
+    config: SSHConfig,
+    localPath: string,
+    remotePath: string,
+    permissions?: string
+  ): Promise<FileTransferResult> {
+    const expandedLocalPath = expandTilde(localPath);
+    
+    try {
+      const stats = await stat(expandedLocalPath);
+      if (!stats.isFile()) {
+        return {
+          success: false,
+          message: `Local path ${localPath} is not a file`,
+        };
+      }
+
+      const sftp = await this.getSFTP(config);
+
+      return new Promise((resolve, reject) => {
+        const readStream = createReadStream(expandedLocalPath);
+        const writeStream = sftp.createWriteStream(remotePath);
+
+        let bytesTransferred = 0;
+
+        readStream.on('data', (chunk) => {
+          bytesTransferred += chunk.length;
+        });
+
+        writeStream.on('close', async () => {
+          if (permissions) {
+            try {
+              const mode = parseInt(permissions, 8);
+              await new Promise<void>((res, rej) => {
+                sftp.chmod(remotePath, mode, (err: Error | null | undefined) => {
+                  if (err) rej(err);
+                  else res();
+                });
+              });
+            } catch (err) {
+              console.warn(`Failed to set permissions: ${err}`);
+            }
+          }
+
+          sftp.end();
+          resolve({
+            success: true,
+            bytesTransferred,
+            message: `Successfully uploaded ${localPath} to ${remotePath}`,
+          });
+        });
+
+        writeStream.on('error', (err: Error) => {
+          sftp.end();
+          reject(err);
+        });
+
+        readStream.on('error', (err: Error) => {
+          sftp.end();
+          reject(err);
+        });
+
+        readStream.pipe(writeStream);
+      });
+    } catch (error) {
+      return {
+        success: false,
+        message: `Upload failed: ${error instanceof Error ? error.message : String(error)}`,
+      };
+    }
+  }
+
+  async downloadFile(
+    config: SSHConfig,
+    remotePath: string,
+    localPath: string
+  ): Promise<FileTransferResult> {
+    const expandedLocalPath = expandTilde(localPath);
+
+    try {
+      const sftp = await this.getSFTP(config);
+
+      return new Promise((resolve, reject) => {
+        const readStream = sftp.createReadStream(remotePath);
+        const writeStream = createWriteStream(expandedLocalPath);
+
+        let bytesTransferred = 0;
+
+        readStream.on('data', (chunk: Buffer) => {
+          bytesTransferred += chunk.length;
+        });
+
+        writeStream.on('close', () => {
+          sftp.end();
+          resolve({
+            success: true,
+            bytesTransferred,
+            message: `Successfully downloaded ${remotePath} to ${localPath}`,
+          });
+        });
+
+        writeStream.on('error', (err: Error) => {
+          sftp.end();
+          reject(err);
+        });
+
+        readStream.on('error', (err: Error) => {
+          sftp.end();
+          reject(err);
+        });
+
+        readStream.pipe(writeStream);
+      });
+    } catch (error) {
+      return {
+        success: false,
+        message: `Download failed: ${error instanceof Error ? error.message : String(error)}`,
+      };
+    }
+  }
+
+  async listRemoteFiles(
+    config: SSHConfig,
+    remotePath: string,
+    pattern?: string
+  ): Promise<FileListResult> {
+    try {
+      const sftp = await this.getSFTP(config);
+
+      const files = await new Promise<FileInfo[]>((resolve, reject) => {
+        sftp.readdir(remotePath, (err, list) => {
+          sftp.end();
+          if (err) {
+            reject(err);
+            return;
+          }
+
+          const fileList = list.map(item => ({
+            filename: item.filename,
+            longname: item.longname,
+            attrs: {
+              mode: item.attrs.mode,
+              uid: item.attrs.uid,
+              gid: item.attrs.gid,
+              size: item.attrs.size,
+              atime: item.attrs.atime,
+              mtime: item.attrs.mtime,
+            },
+          }));
+
+          resolve(fileList);
+        });
+      });
+
+      let filteredFiles = files;
+      if (pattern) {
+        const regex = new RegExp(pattern.replace(/\*/g, '.*').replace(/\?/g, '.'));
+        filteredFiles = files.filter(file => regex.test(file.filename));
+      }
+
+      return {
+        files: filteredFiles,
+        totalCount: filteredFiles.length,
+      };
+    } catch (error) {
+      throw new Error(`Failed to list files: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+
+  async deleteRemoteFile(
+    config: SSHConfig,
+    remotePath: string
+  ): Promise<FileDeleteResult> {
+    try {
+      const sftp = await this.getSFTP(config);
+
+      await new Promise<void>((resolve, reject) => {
+        sftp.unlink(remotePath, (err) => {
+          sftp.end();
+          if (err) {
+            reject(err);
+            return;
+          }
+          resolve();
+        });
+      });
+
+      return {
+        success: true,
+        message: `Successfully deleted ${remotePath}`,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: `Delete failed: ${error instanceof Error ? error.message : String(error)}`,
+      };
     }
   }
 }

@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- SFTP Tools:
+  - `ssh_upload_file` tool to upload files from local to remote servers with optional permission setting
+  - `ssh_download_file` tool to download files from remote servers to local system
+  - `ssh_list_remote_files` tool to list files in remote directories with glob pattern filtering
+  - `ssh_delete_remote_file` tool to delete files on remote servers
+
 ### Changed
 - Change default config filename to avoid conflicts with other tools
 

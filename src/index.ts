@@ -15,6 +15,10 @@ import {
   handleClosePortForward,
   handleListPortForwards,
   handleForwardService,
+  handleUploadFile,
+  handleDownloadFile,
+  handleListRemoteFiles,
+  handleDeleteRemoteFile,
   type HandlerContext,
 } from './handlers/index.js';
 import { join } from 'path';
@@ -73,6 +77,10 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       'ssh_close_port_forward': handleClosePortForward,
       'ssh_list_port_forwards': handleListPortForwards,
       'ssh_port_forward_service': handleForwardService,
+      'ssh_upload_file': handleUploadFile,
+      'ssh_download_file': handleDownloadFile,
+      'ssh_list_remote_files': handleListRemoteFiles,
+      'ssh_delete_remote_file': handleDeleteRemoteFile,
     };
 
     const handler = toolHandlers[name];
