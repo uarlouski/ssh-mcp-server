@@ -1,9 +1,14 @@
 # SSH MCP Server
 
-A Model Context Protocol (MCP) server that provides secure SSH capabilities for AI assistants, enabling remote command execution and port forwarding with comprehensive security controls.
+A Model Context Protocol (MCP) server that provides secure SSH capabilities for AI assistants, enabling remote command execution, SFTP file transfers, and port forwarding with comprehensive security controls.
 
 [![npm version](https://badge.fury.io/js/@uarlouski%2Fssh-mcp-server.svg)](https://www.npmjs.com/package/@uarlouski/ssh-mcp-server)
+[![npm downloads](https://img.shields.io/npm/dm/@uarlouski/ssh-mcp-server.svg)](https://www.npmjs.com/package/@uarlouski/ssh-mcp-server)
+[![CI](https://github.com/uarlouski/ssh-mcp-server/actions/workflows/ci.yml/badge.svg)](https://github.com/uarlouski/ssh-mcp-server/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
+[![Node.js Version](https://img.shields.io/node/v/@uarlouski/ssh-mcp-server.svg)](https://nodejs.org)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.3-blue.svg)](https://www.typescriptlang.org/)
+[![GitHub stars](https://img.shields.io/github/stars/uarlouski/ssh-mcp-server.svg?style=social&label=Star)](https://github.com/uarlouski/ssh-mcp-server)
 
 ## Table of Contents
 
