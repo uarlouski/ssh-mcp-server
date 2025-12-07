@@ -1,7 +1,7 @@
 {
   "name": "@uarlouski/ssh-mcp-server",
   "version": "1.2.0",
-  "description": "MCP server enabling AI assistants to securely execute SSH commands, transfer files via SFTP, and manage port forwarding with comprehensive security controls",
+  "description": "MCP server enabling AI assistants to securely execute SSH commands, transfer files via SFTP, manage port forwarding, and use parameterized command templates with comprehensive security controls",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -63,7 +63,13 @@
     "github-copilot",
     "ai-assistant",
     "remote-file-management",
-    "secure-ssh"
+    "secure-ssh",
+    "command-templates",
+    "templates",
+    "macros",
+    "parameterized-commands",
+    "docker-templates",
+    "kubernetes-templates"
   ],
   "author": "Uladzislau Arlouski <uarlouski@gmail.com>",
   "license": "Apache 2.0",

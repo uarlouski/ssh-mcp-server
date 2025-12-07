@@ -19,6 +19,8 @@ import {
   handleDownloadFile,
   handleListRemoteFiles,
   handleDeleteRemoteFile,
+  handleExecuteTemplate,
+  handleListTemplates,
   type HandlerContext,
 } from './handlers/index.js';
 import { join } from 'path';
@@ -81,6 +83,8 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       'ssh_download_file': handleDownloadFile,
       'ssh_list_remote_files': handleListRemoteFiles,
       'ssh_delete_remote_file': handleDeleteRemoteFile,
+      'ssh_execute_template': handleExecuteTemplate,
+      'ssh_list_templates': handleListTemplates,
     };
 
     const handler = toolHandlers[name];

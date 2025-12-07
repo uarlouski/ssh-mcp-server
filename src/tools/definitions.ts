@@ -173,4 +173,37 @@ export const tools: Tool[] = [
       required: ['connectionName', 'remotePath'],
     },
   },
+  {
+    name: 'ssh_execute_template',
+    description: 'Execute a pre-configured command template with variable substitution. Templates are defined in the commandTemplates section of config.json and support ${variable} and ${variable:-defaultValue} syntax.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        connectionName: {
+          type: 'string',
+          description: 'Name of a pre-configured SSH server from config.json',
+        },
+        templateName: {
+          type: 'string',
+          description: 'Name of the command template defined in config.json',
+        },
+        variables: {
+          type: 'object',
+          description: 'Key-value pairs for template variable substitution',
+          additionalProperties: {
+            type: 'string',
+          },
+        },
+      },
+      required: ['connectionName', 'templateName'],
+    },
+  },
+  {
+    name: 'ssh_list_templates',
+    description: 'List all available command templates defined in config.json with their descriptions and required variables.',
+    inputSchema: {
+      type: 'object',
+      properties: {},
+    },
+  },
 ];

@@ -7,4 +7,6 @@ export { handleUploadFile } from './upload-file.js';
 export { handleDownloadFile } from './download-file.js';
 export { handleListRemoteFiles } from './list-remote-files.js';
 export { handleDeleteRemoteFile } from './delete-remote-file.js';
+export { handleExecuteTemplate } from './execute-template.js';
+export { handleListTemplates } from './list-templates.js';
 export type { HandlerContext } from './execute-command.js';

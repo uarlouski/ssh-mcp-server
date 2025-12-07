@@ -13,10 +13,16 @@ export interface PortForwardingService {
   description?: string;
 }
 
+export interface CommandTemplate {
+  command: string;
+  description?: string;
+}
+
 export interface Config {
   allowedCommands?: string[];
   servers?: Record<string, SSHConfig>;
   portForwardingServices?: Record<string, PortForwardingService>;
+  commandTemplates?: Record<string, string | CommandTemplate>;
   timeout?: number;
   maxConnections?: number;
 }

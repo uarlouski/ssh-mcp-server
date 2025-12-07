@@ -31,6 +31,7 @@ A Model Context Protocol (MCP) server that provides secure SSH capabilities for 
 - 🔑 **SSH Key Authentication** - Secure authentication using SSH private keys
 - ✅ **Command Allowlisting** - Restrict which commands can be executed
 - 📦 **Named Services** - Pre-configured port forwarding services for common use cases
+- 🎯 **Command Templates** - Reusable parameterized commands with variable substitution
 
 ## Installation
 
@@ -156,6 +157,17 @@ The configuration file supports the following options:
       "description": "Optional description"
     }
   },
+  "commandTemplates": {
+    "k8s-pod-logs": {
+      "command": "kubectl logs -n {{namespace}} {{pod}} --tail={{lines:100}}",
+      "description": "Fetch Kubernetes pod logs with configurable tail size"
+    },
+    "app-deploy": {
+      "command": "cd /var/www/{{app}} && git pull origin {{branch:main}} && npm install && pm2 restart {{app}}",
+      "description": "Deploy application with git pull, npm install, and pm2 restart"
+    },
+    "docker-stats": "docker stats {{container:--all}} --no-stream --format 'table {{.Name}}\\t{{.CPUPerc}}'"
+  },
   "timeout": 30000,
   "maxConnections": 10
 }
@@ -225,6 +237,42 @@ Pre-configured named port forwarding services for common use cases.
   }
 }
 ```
+
+#### `commandTemplates` (optional)
+
+Reusable parameterized command templates with variable substitution.
+
+Templates can be defined in two formats:
+- **String format**: `"template-name": "command with {{variables}}"`
+- **Object format**: `"template-name": { "command": "...", "description": "..." }`
+
+**Variable syntax:**
+- `{{variable}}` - Required variable
+- `{{variable:default}}` - Optional variable with default value
+- `{{.field}}` - Preserved for Docker/Go templates (not substituted)
+
+**Example:**
+```json
+"commandTemplates": {
+  "k8s-pod-logs": {
+    "command": "kubectl logs -n {{namespace}} {{pod}} --tail={{lines:100}}",
+    "description": "Fetch Kubernetes pod logs with configurable tail size"
+  },
+  "app-deploy": {
+    "command": "cd /var/www/{{app}} && git pull origin {{branch:main}} && npm install && pm2 restart {{app}}",
+    "description": "Deploy application"
+  },
+  "docker-stats": "docker stats {{container:--all}} --no-stream --format 'table {{.Name}}\\t{{.CPUPerc}}'",
+  "nginx-reload": "sudo nginx -t && sudo systemctl reload nginx"
+}
+```
+
+**Usage with AI:**
+```
+"Get logs from the api-7d8f9 pod in the staging namespace"
+```
+
+The AI will recognize this matches the `k8s-pod-logs` template and execute it with the appropriate variables.
 
 #### `timeout` (optional)
 
@@ -478,6 +526,78 @@ Delete a file on the remote server via SFTP.
 }
 ```
 
+### `ssh_execute_template`
+
+Execute a pre-configured command template with variable substitution.
+
+**Parameters:**
+- `connectionName` (string, required): Name of the server from your config
+- `templateName` (string, required): Name of the command template
+- `variables` (object, optional): Key-value pairs for variable substitution
+
+**Example:**
+```json
+{
+  "connectionName": "kubernetes-bastion",
+  "templateName": "k8s-pod-logs",
+  "variables": {
+    "namespace": "staging",
+    "pod": "api-7d8f9",
+    "lines": "50"
+  }
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "templateName": "k8s-pod-logs",
+  "expandedCommand": "kubectl logs -n production api-7d8f9 --tail=50",
+  "variables": {
+    "namespace": "staging",
+    "pod": "api-7d8f9",
+    "lines": "50"
+  },
+  "result": {
+    "stdout": "...",
+    "stderr": "",
+    "exitCode": 0
+  }
+}
+```
+
+### `ssh_list_templates`
+
+List all available command templates with their descriptions and variables.
+
+**Parameters:** None
+
+**Example:**
+```json
+{}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "templates": [
+    {
+      "name": "k8s-pod-logs",
+      "command": "kubectl logs -n {{namespace}} {{pod}} --tail={{lines:100}}",
+      "description": "Fetch Kubernetes pod logs with configurable tail size",
+      "variables": [
+        { "name": "namespace", "required": true },
+        { "name": "pod", "required": true },
+        { "name": "lines", "required": false, "defaultValue": "100" }
+      ]
+    }
+  ],
+  "count": 1
+}
+```
+
 ## Security
 
 ### Built-in Security Features
@@ -502,6 +622,12 @@ Delete a file on the remote server via SFTP.
    - Limits concurrent connections via `maxConnections`
    - Prevents resource exhaustion
    - Automatic cleanup of idle connections
+
+5. **Template Validation**
+   - Command templates are validated at config load time
+   - Expanded template commands are subject to `allowedCommands` validation
+   - Template syntax prevents conflicts with shell variable substitution
+   - Docker/Go template patterns (`{{.Field}}`) are preserved and not substituted
 
 ### Security Considerations
 

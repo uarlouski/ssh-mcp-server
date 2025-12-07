@@ -1,8 +1,9 @@
 import { readFile } from 'fs/promises';
 import { existsSync } from 'fs';
-import type { Config, SSHConfig } from './types.js';
+import type { Config, SSHConfig, CommandTemplate } from './types.js';
 import { CommandParser } from './command-parser.js';
-import { expandTilde } from './utils.js';
+import { expandTilde, validateRequiredString } from './utils.js';
+import { substituteVariables } from './template-processor.js';
 
 export class ConfigManager {
   private config: Config = {};
@@ -28,17 +29,21 @@ export class ConfigManager {
   }
 
   private validateConfig(): void {
-    if (!this.config.servers) {
-      return;
-    }
-
-    for (const [serverName, serverConfig] of Object.entries(this.config.servers)) {
-      this.validateServerConfig(serverName, serverConfig);
+    if (this.config.servers) {
+      for (const [serverName, serverConfig] of Object.entries(this.config.servers)) {
+        this.validateServerConfig(serverName, serverConfig);
+      }
     }
 
     if (this.config.portForwardingServices) {
       for (const [serviceName, serviceConfig] of Object.entries(this.config.portForwardingServices)) {
         this.validatePortForwardingService(serviceName, serviceConfig);
+      }
+    }
+
+    if (this.config.commandTemplates) {
+      for (const [templateName, template] of Object.entries(this.config.commandTemplates)) {
+        this.validateCommandTemplate(templateName, template);
       }
     }
   }
@@ -116,6 +121,42 @@ export class ConfigManager {
     }
   }
 
+  private validateCommandTemplate(templateName: string, template: string | CommandTemplate): void {
+    const errors: string[] = [];
+
+    try {
+      validateRequiredString(templateName, 'Template name');
+    } catch (error) {
+      errors.push(error instanceof Error ? error.message : String(error));
+    }
+
+    if (typeof template === 'string') {
+      try {
+        validateRequiredString(template, 'Template command');
+      } catch (error) {
+        errors.push(error instanceof Error ? error.message : String(error));
+      }
+    } else if (typeof template === 'object' && template !== null) {
+      try {
+        validateRequiredString(template.command, 'Template command');
+      } catch (error) {
+        errors.push(error instanceof Error ? error.message : String(error));
+      }
+
+      if (template.description !== undefined && this.isEmptyValue(template.description)) {
+        errors.push('Template description, if provided, must be a non-empty string');
+      }
+    } else {
+      errors.push('Template must be either a string or an object with a command property');
+    }
+
+    if (errors.length > 0) {
+      throw new Error(
+        `Invalid command template '${templateName}':\n  - ${errors.join('\n  - ')}`
+      );
+    }
+  }
+
   isCommandAllowed(command: string): boolean {
     if (!this.config.allowedCommands || this.config.allowedCommands.length === 0) {
       return true;
@@ -160,5 +201,36 @@ export class ConfigManager {
 
   listPortForwardingServices(): string[] {
     return Object.keys(this.config.portForwardingServices || {});
+  }
+
+  getCommandTemplate(templateName: string): string {
+    if (!templateName) {
+      throw new Error('templateName is required');
+    }
+
+    const template = this.config.commandTemplates?.[templateName];
+    if (!template) {
+      throw new Error(`Command template '${templateName}' not found in config.json`);
+    }
+
+    if (typeof template === 'string') {
+      return template;
+    } else {
+      return template.command;
+    }
+  }
+
+  listCommandTemplates(): Array<{ name: string; command: string; description?: string }> {
+    if (!this.config.commandTemplates) {
+      return [];
+    }
+
+    return Object.entries(this.config.commandTemplates).map(([name, template]) => {
+      if (typeof template === 'string') {
+        return { name, command: template };
+      } else {
+        return { name, command: template.command, description: template.description };
+      }
+    });
   }
 }

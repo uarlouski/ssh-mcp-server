@@ -37,6 +37,24 @@
       "description": "PostgreSQL database access"
     }
   },
+  "commandTemplates": {
+    "k8s-pod-logs": {
+      "command": "kubectl logs -n {{namespace}} {{pod}} --tail={{lines:100}}",
+      "description": "Fetch Kubernetes pod logs with configurable tail size"
+    },
+    "docker-stats": {
+      "command": "docker stats {{container:--all}} --no-stream --format 'table {{.Name}}\\t{{.CPUPerc}}\\t{{.MemUsage}}'",
+      "description": "Get real-time Docker container statistics ({{.Name}} is Docker syntax, not a template variable)"
+    },
+    "disk-usage": {
+      "command": "df -h {{path:/}}",
+      "description": "Check disk usage for a specific path"
+    },
+    "service-status": {
+      "command": "systemctl status {{service}}",
+      "description": "Check systemd service status"
+    }
+  },
   "timeout": 30000,
   "maxConnections": 10
 }

@@ -889,4 +889,238 @@ describe('ConfigManager', () => {
       expect(services).toEqual([]);
     });
   });
+
+  describe('Command Templates Validation', () => {
+    it('should accept valid command template in string format', async () => {
+      const mockConfig = {
+        commandTemplates: {
+          'test-template': 'kubectl logs {{pod}} --tail={{lines:100}}'
+        },
+      };
+
+      (existsSync as jest.Mock).mockReturnValue(true);
+      (readFile as jest.Mock).mockResolvedValue(JSON.stringify(mockConfig));
+
+      await expect(configManager.load()).resolves.not.toThrow();
+    });
+
+    it('should accept valid command template in object format', async () => {
+      const mockConfig = {
+        commandTemplates: {
+          'test-template': {
+            command: 'kubectl logs {{pod}} --tail={{lines:100}}',
+            description: 'Get pod logs'
+          }
+        },
+      };
+
+      (existsSync as jest.Mock).mockReturnValue(true);
+      (readFile as jest.Mock).mockResolvedValue(JSON.stringify(mockConfig));
+
+      await expect(configManager.load()).resolves.not.toThrow();
+    });
+
+    it('should reject template with empty command (string format)', async () => {
+      const mockConfig = {
+        commandTemplates: {
+          'invalid-template': ''
+        },
+      };
+
+      (existsSync as jest.Mock).mockReturnValue(true);
+      (readFile as jest.Mock).mockResolvedValue(JSON.stringify(mockConfig));
+
+      await expect(configManager.load()).rejects.toThrow(
+        "Invalid command template 'invalid-template'"
+      );
+      await expect(configManager.load()).rejects.toThrow(
+        'Template command is required and must be a non-empty string'
+      );
+    });
+
+    it('should reject template with whitespace-only command (string format)', async () => {
+      const mockConfig = {
+        commandTemplates: {
+          'invalid-template': '   '
+        },
+      };
+
+      (existsSync as jest.Mock).mockReturnValue(true);
+      (readFile as jest.Mock).mockResolvedValue(JSON.stringify(mockConfig));
+
+      await expect(configManager.load()).rejects.toThrow(
+        'Template command is required and must be a non-empty string'
+      );
+    });
+
+    it('should reject template with missing command (object format)', async () => {
+      const mockConfig = {
+        commandTemplates: {
+          'invalid-template': {
+            description: 'Missing command'
+          }
+        },
+      };
+
+      (existsSync as jest.Mock).mockReturnValue(true);
+      (readFile as jest.Mock).mockResolvedValue(JSON.stringify(mockConfig));
+
+      await expect(configManager.load()).rejects.toThrow(
+        'Template command is required and must be a non-empty string'
+      );
+    });
+
+    it('should reject template with empty command (object format)', async () => {
+      const mockConfig = {
+        commandTemplates: {
+          'invalid-template': {
+            command: '',
+            description: 'Empty command'
+          }
+        },
+      };
+
+      (existsSync as jest.Mock).mockReturnValue(true);
+      (readFile as jest.Mock).mockResolvedValue(JSON.stringify(mockConfig));
+
+      await expect(configManager.load()).rejects.toThrow(
+        'Template command is required and must be a non-empty string'
+      );
+    });
+
+    it('should reject template with whitespace-only command (object format)', async () => {
+      const mockConfig = {
+        commandTemplates: {
+          'invalid-template': {
+            command: '   ',
+            description: 'Whitespace command'
+          }
+        },
+      };
+
+      (existsSync as jest.Mock).mockReturnValue(true);
+      (readFile as jest.Mock).mockResolvedValue(JSON.stringify(mockConfig));
+
+      await expect(configManager.load()).rejects.toThrow(
+        'Template command is required and must be a non-empty string'
+      );
+    });
+
+    it('should reject template with empty description', async () => {
+      const mockConfig = {
+        commandTemplates: {
+          'invalid-template': {
+            command: 'valid command',
+            description: '   '
+          }
+        },
+      };
+
+      (existsSync as jest.Mock).mockReturnValue(true);
+      (readFile as jest.Mock).mockResolvedValue(JSON.stringify(mockConfig));
+
+      await expect(configManager.load()).rejects.toThrow(
+        'Template description, if provided, must be a non-empty string'
+      );
+    });
+
+    it('should accept template with valid description', async () => {
+      const mockConfig = {
+        commandTemplates: {
+          'valid-template': {
+            command: 'kubectl get pods',
+            description: 'List all pods'
+          }
+        },
+      };
+
+      (existsSync as jest.Mock).mockReturnValue(true);
+      (readFile as jest.Mock).mockResolvedValue(JSON.stringify(mockConfig));
+
+      await expect(configManager.load()).resolves.not.toThrow();
+    });
+
+    it('should accept template without description (object format)', async () => {
+      const mockConfig = {
+        commandTemplates: {
+          'valid-template': {
+            command: 'kubectl get pods'
+          }
+        },
+      };
+
+      (existsSync as jest.Mock).mockReturnValue(true);
+      (readFile as jest.Mock).mockResolvedValue(JSON.stringify(mockConfig));
+
+      await expect(configManager.load()).resolves.not.toThrow();
+    });
+
+    it('should reject template with invalid type', async () => {
+      const mockConfig = {
+        commandTemplates: {
+          'invalid-template': 12345
+        },
+      };
+
+      (existsSync as jest.Mock).mockReturnValue(true);
+      (readFile as jest.Mock).mockResolvedValue(JSON.stringify(mockConfig));
+
+      await expect(configManager.load()).rejects.toThrow(
+        'Template must be either a string or an object with a command property'
+      );
+    });
+
+    it('should reject template with null value', async () => {
+      const mockConfig = {
+        commandTemplates: {
+          'invalid-template': null
+        },
+      };
+
+      (existsSync as jest.Mock).mockReturnValue(true);
+      (readFile as jest.Mock).mockResolvedValue(JSON.stringify(mockConfig));
+
+      await expect(configManager.load()).rejects.toThrow(
+        'Template must be either a string or an object with a command property'
+      );
+    });
+
+    it('should validate all templates in config', async () => {
+      const mockConfig = {
+        commandTemplates: {
+          'valid-template': 'valid command',
+          'invalid-template': ''
+        },
+      };
+
+      (existsSync as jest.Mock).mockReturnValue(true);
+      (readFile as jest.Mock).mockResolvedValue(JSON.stringify(mockConfig));
+
+      await expect(configManager.load()).rejects.toThrow(
+        "Invalid command template 'invalid-template'"
+      );
+    });
+
+    it('should allow config with no templates', async () => {
+      const mockConfig = {
+        allowedCommands: ['ls', 'pwd'],
+      };
+
+      (existsSync as jest.Mock).mockReturnValue(true);
+      (readFile as jest.Mock).mockResolvedValue(JSON.stringify(mockConfig));
+
+      await expect(configManager.load()).resolves.not.toThrow();
+    });
+
+    it('should allow empty commandTemplates object', async () => {
+      const mockConfig = {
+        commandTemplates: {},
+      };
+
+      (existsSync as jest.Mock).mockReturnValue(true);
+      (readFile as jest.Mock).mockResolvedValue(JSON.stringify(mockConfig));
+
+      await expect(configManager.load()).resolves.not.toThrow();
+    });
+  });
 });
