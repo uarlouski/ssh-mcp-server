@@ -8,21 +8,8 @@ import {
 } from '@modelcontextprotocol/sdk/types.js';
 import { SSHConnectionManager } from './ssh-manager.js';
 import { ConfigManager } from './config.js';
-import { tools } from './tools/definitions.js';
-import {
-  handleExecuteCommand,
-  handlePortForward,
-  handleClosePortForward,
-  handleListPortForwards,
-  handleForwardService,
-  handleUploadFile,
-  handleDownloadFile,
-  handleListRemoteFiles,
-  handleDeleteRemoteFile,
-  handleExecuteTemplate,
-  handleListTemplates,
-  type HandlerContext,
-} from './handlers/index.js';
+import { tools, handlers } from './tools/registry.js';
+import type { HandlerContext } from './tools/types.js';
 import { join } from 'path';
 import { existsSync } from 'fs';
 
@@ -35,11 +22,11 @@ if (configPathArg) {
 } else {
   const defaultConfigs = ['ssh-mcp-config.json', 'config.json'];
   const found = defaultConfigs.find(name => existsSync(join(process.cwd(), name)));
-  
+
   if (found === 'config.json') {
     console.error('⚠️  Warning: config.json is deprecated. Please rename to ssh-mcp-config.json');
   }
-  
+
   configPath = join(process.cwd(), found || 'ssh-mcp-config.json');
 }
 
@@ -73,21 +60,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
   const { name, arguments: args } = request.params;
 
   try {
-    const toolHandlers: Record<string, (args: any, context: HandlerContext) => Promise<any>> = {
-      'ssh_execute_command': handleExecuteCommand,
-      'ssh_port_forward': handlePortForward,
-      'ssh_close_port_forward': handleClosePortForward,
-      'ssh_list_port_forwards': handleListPortForwards,
-      'ssh_port_forward_service': handleForwardService,
-      'ssh_upload_file': handleUploadFile,
-      'ssh_download_file': handleDownloadFile,
-      'ssh_list_remote_files': handleListRemoteFiles,
-      'ssh_delete_remote_file': handleDeleteRemoteFile,
-      'ssh_execute_template': handleExecuteTemplate,
-      'ssh_list_templates': handleListTemplates,
-    };
-
-    const handler = toolHandlers[name];
+    const handler = handlers.get(name);
     if (handler) {
       return await handler(args, handlerContext);
     }

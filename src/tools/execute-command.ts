@@ -1,6 +1,4 @@
-import type { CallToolResult, Tool } from '@modelcontextprotocol/sdk/types.js';
-import type { ToolRegistration } from '../tools/types.js';
-import type { HandlerContext } from './types.js';
+import type { ToolRegistration, HandlerContext } from './types.js';
 import { buildToolResult } from './response-builder.js';
 
 interface ExecuteCommandArgs {
@@ -8,7 +6,7 @@ interface ExecuteCommandArgs {
   command: string;
 }
 
-const definition: Tool = {
+const definition = {
   name: 'ssh_execute_command',
   description:
     'Execute a command on a remote SSH server. The connectionName must reference a pre-configured server in config.json.',
@@ -28,7 +26,7 @@ const definition: Tool = {
   },
 };
 
-const handler = async (args: ExecuteCommandArgs, context: HandlerContext): Promise<CallToolResult> => {
+const handler = async (args: ExecuteCommandArgs, context: HandlerContext) => {
   const { connectionName, command } = args;
 
   const sshConfig = context.configManager.getServer(connectionName);

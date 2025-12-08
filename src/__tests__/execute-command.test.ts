@@ -1,8 +1,8 @@
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
-import { handleExecuteCommand } from '../handlers/execute-command.js';
+import { executeCommand } from '../tools/execute-command.js';
 import { ConfigManager } from '../config.js';
 import { SSHConnectionManager } from '../ssh-manager.js';
-import type { HandlerContext } from '../handlers/execute-command.js';
+import type { HandlerContext } from '../tools/types.js';
 
 jest.mock('../config.js');
 jest.mock('../ssh-manager.js');
@@ -48,7 +48,7 @@ describe('handleExecuteCommand', () => {
         mockConfigManager.isCommandAllowed.mockReturnValue(true);
         mockSSHManager.executeCommand.mockResolvedValue(commandResult);
 
-        const result = await handleExecuteCommand(
+        const result = await executeCommand.handler(
             { connectionName: 'production', command: 'ls -la' },
             context
         );
@@ -77,7 +77,7 @@ describe('handleExecuteCommand', () => {
         mockConfigManager.isCommandAllowed.mockReturnValue(false);
 
         await expect(
-            handleExecuteCommand(
+            executeCommand.handler(
                 { connectionName: 'production', command: 'rm -rf /' },
                 context
             )
@@ -92,7 +92,7 @@ describe('handleExecuteCommand', () => {
         });
 
         await expect(
-            handleExecuteCommand(
+            executeCommand.handler(
                 { connectionName: 'nonexistent', command: 'ls' },
                 context
             )
@@ -117,7 +117,7 @@ describe('handleExecuteCommand', () => {
         mockConfigManager.isCommandAllowed.mockReturnValue(true);
         mockSSHManager.executeCommand.mockResolvedValue(commandResult);
 
-        const result = await handleExecuteCommand(
+        const result = await executeCommand.handler(
             { connectionName: 'production', command: 'false' },
             context
         );
@@ -146,7 +146,7 @@ describe('handleExecuteCommand', () => {
         mockConfigManager.isCommandAllowed.mockReturnValue(true);
         mockSSHManager.executeCommand.mockResolvedValue(commandResult);
 
-        const result = await handleExecuteCommand(
+        const result = await executeCommand.handler(
             { connectionName: 'production', command: 'echo test' },
             context
         );
@@ -169,7 +169,7 @@ describe('handleExecuteCommand', () => {
         mockSSHManager.executeCommand.mockRejectedValue(new Error('Connection timeout'));
 
         await expect(
-            handleExecuteCommand(
+            executeCommand.handler(
                 { connectionName: 'production', command: 'ls' },
                 context
             )
