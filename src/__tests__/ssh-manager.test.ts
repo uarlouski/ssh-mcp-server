@@ -28,6 +28,10 @@ describe('SSHConnectionManager', () => {
     (Client as unknown as jest.Mock).mockImplementation(() => mockClient);
   });
 
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
   describe('getConnection', () => {
     const sshConfig: SSHConfig = {
       host: 'example.com',
@@ -263,6 +267,41 @@ describe('SSHConnectionManager', () => {
       mockStream.stderr.on.mockReturnValue(mockStream.stderr);
 
       await expect(sshManager.executeCommand(sshConfig, 'ls')).rejects.toThrow('Stream error');
+    });
+
+    it('should timeout and close the stream when execution exceeds timeout', async () => {
+      jest.useFakeTimers();
+
+      const mockStream: any = {
+        on: jest.fn(),
+        close: jest.fn(),
+        stderr: { on: jest.fn() },
+      };
+
+      mockClient.exec.mockImplementation((cmd: string, callback: any) => {
+        callback(null, mockStream);
+        return mockClient;
+      });
+
+      // Never emit 'close' to simulate a hung command
+      mockStream.on.mockImplementation((event: string, callback: any) => {
+        if (event === 'data') {
+          setTimeout(() => callback(Buffer.from('partial')), 0);
+        }
+        return mockStream;
+      });
+      mockStream.stderr.on.mockReturnValue(mockStream.stderr);
+
+      const promise = sshManager.executeCommand(sshConfig, 'sleep 999', 50);
+
+      // Let initial stdout be captured and trigger timeout
+      await jest.runAllTimersAsync();
+
+      const result = await promise;
+      expect(mockStream.close).toHaveBeenCalled();
+      expect(result.timedOut).toBe(true);
+      expect(result.exitCode).toBeNull();
+      expect(result.stdout).toContain('partial');
     });
   });
 

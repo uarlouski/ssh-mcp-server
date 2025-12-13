@@ -66,7 +66,7 @@ describe('Type Definitions', () => {
             privateKeyPath: '/path/to/key',
           },
         },
-        timeout: 15000,
+        commandTimeout: 15000,
         maxConnections: 10,
       };
 

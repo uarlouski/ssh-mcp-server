@@ -18,6 +18,7 @@ describe('handleExecuteCommand', () => {
         mockConfigManager = {
             getServer: jest.fn(),
             isCommandAllowed: jest.fn(),
+            getCommandTimeout: jest.fn(),
         } as any;
 
         mockSSHManager = {
@@ -46,6 +47,7 @@ describe('handleExecuteCommand', () => {
 
         mockConfigManager.getServer.mockReturnValue(sshConfig);
         mockConfigManager.isCommandAllowed.mockReturnValue(true);
+        mockConfigManager.getCommandTimeout.mockReturnValue(30000);
         mockSSHManager.executeCommand.mockResolvedValue(commandResult);
 
         const result = await executeCommand.handler(
@@ -55,7 +57,7 @@ describe('handleExecuteCommand', () => {
 
         expect(mockConfigManager.getServer).toHaveBeenCalledWith('production');
         expect(mockConfigManager.isCommandAllowed).toHaveBeenCalledWith('ls -la');
-        expect(mockSSHManager.executeCommand).toHaveBeenCalledWith(sshConfig, 'ls -la');
+        expect(mockSSHManager.executeCommand).toHaveBeenCalledWith(sshConfig, 'ls -la', 30000);
 
         expect(result.content[0].type).toBe('text');
         const response = JSON.parse((result.content[0] as any).text);
@@ -115,6 +117,7 @@ describe('handleExecuteCommand', () => {
 
         mockConfigManager.getServer.mockReturnValue(sshConfig);
         mockConfigManager.isCommandAllowed.mockReturnValue(true);
+        mockConfigManager.getCommandTimeout.mockReturnValue(30000);
         mockSSHManager.executeCommand.mockResolvedValue(commandResult);
 
         const result = await executeCommand.handler(
@@ -144,6 +147,7 @@ describe('handleExecuteCommand', () => {
 
         mockConfigManager.getServer.mockReturnValue(sshConfig);
         mockConfigManager.isCommandAllowed.mockReturnValue(true);
+        mockConfigManager.getCommandTimeout.mockReturnValue(30000);
         mockSSHManager.executeCommand.mockResolvedValue(commandResult);
 
         const result = await executeCommand.handler(
@@ -166,6 +170,7 @@ describe('handleExecuteCommand', () => {
 
         mockConfigManager.getServer.mockReturnValue(sshConfig);
         mockConfigManager.isCommandAllowed.mockReturnValue(true);
+        mockConfigManager.getCommandTimeout.mockReturnValue(30000);
         mockSSHManager.executeCommand.mockRejectedValue(new Error('Connection timeout'));
 
         await expect(
@@ -174,5 +179,30 @@ describe('handleExecuteCommand', () => {
                 context
             )
         ).rejects.toThrow('Connection timeout');
+    });
+
+    it('should use per-command commandTimeout override when provided', async () => {
+        const sshConfig = {
+            host: 'server.example.com',
+            port: 22,
+            username: 'user',
+            privateKeyPath: '/path/to/key',
+        };
+
+        mockConfigManager.getServer.mockReturnValue(sshConfig);
+        mockConfigManager.isCommandAllowed.mockReturnValue(true);
+        mockConfigManager.getCommandTimeout.mockReturnValue(30000);
+        mockSSHManager.executeCommand.mockResolvedValue({
+            exitCode: 0,
+            stdout: 'ok',
+            stderr: '',
+        });
+
+        await executeCommand.handler(
+            { connectionName: 'production', command: 'ls', commandTimeout: 1234 },
+            context
+        );
+
+        expect(mockSSHManager.executeCommand).toHaveBeenCalledWith(sshConfig, 'ls', 1234);
     });
 });

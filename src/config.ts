@@ -2,7 +2,7 @@ import { readFile } from 'fs/promises';
 import { existsSync } from 'fs';
 import type { Config, SSHConfig, CommandTemplate } from './types.js';
 import { CommandParser } from './command-parser.js';
-import { expandTilde, validateRequiredString } from './utils.js';
+import { expandTilde, validateCommandTimeout, validateRequiredString } from './utils.js';
 import { substituteVariables } from './template-processor.js';
 
 export class ConfigManager {
@@ -29,6 +29,8 @@ export class ConfigManager {
   }
 
   private validateConfig(): void {
+    validateCommandTimeout(this.config.commandTimeout);
+
     if (this.config.servers) {
       for (const [serverName, serverConfig] of Object.entries(this.config.servers)) {
         this.validateServerConfig(serverName, serverConfig);
@@ -178,8 +180,8 @@ export class ConfigManager {
     return sshConfig;
   }
 
-  getTimeout(): number {
-    return this.config.timeout || 30000;
+  getCommandTimeout(): number {
+    return this.config.commandTimeout || 30000;
   }
 
   getMaxConnections(): number {

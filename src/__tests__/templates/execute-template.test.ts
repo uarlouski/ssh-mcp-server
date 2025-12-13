@@ -37,6 +37,7 @@ describe('handleExecuteTemplate', () => {
     mockConfigManager.getCommandTemplate.mockReturnValue('echo {{message}}');
     mockSubstituteVariables.mockReturnValue('echo Hello');
     mockConfigManager.isCommandAllowed.mockReturnValue(true);
+    mockConfigManager.getCommandTimeout.mockReturnValue(30000);
     mockConfigManager.getServer.mockReturnValue({
       host: 'test.example.com',
       port: 22,
@@ -214,8 +215,28 @@ describe('handleExecuteTemplate', () => {
 
       expect(mockSSHManager.executeCommand).toHaveBeenCalledWith(
         sshConfig,
-        expandedCommand
+        expandedCommand,
+        30000
       );
+    });
+
+    it('should use per-command commandTimeout override when provided', async () => {
+      const sshConfig = {
+        host: 'test.example.com',
+        port: 22,
+        username: 'testuser',
+        privateKeyPath: '/test/key',
+      };
+
+      mockConfigManager.getServer.mockReturnValue(sshConfig);
+      mockSubstituteVariables.mockReturnValue('echo Hello');
+
+      await executeTemplate.handler(
+        { connectionName: 'server', templateName: 'test', variables: {}, commandTimeout: 1234 },
+        context
+      );
+
+      expect(mockSSHManager.executeCommand).toHaveBeenCalledWith(sshConfig, 'echo Hello', 1234);
     });
 
     it('should handle command execution success', async () => {
@@ -354,6 +375,7 @@ describe('handleExecuteTemplate', () => {
         stdout: 'test output',
         stderr: 'test error',
         exitCode: 1,
+        timedOut: false,
       });
     });
 

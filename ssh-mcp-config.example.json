@@ -55,6 +55,6 @@
       "description": "Check systemd service status"
     }
   },
-  "timeout": 30000,
+  "commandTimeout": 30000,
   "maxConnections": 10
 }

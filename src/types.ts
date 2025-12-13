@@ -23,7 +23,7 @@ export interface Config {
   servers?: Record<string, SSHConfig>;
   portForwardingServices?: Record<string, PortForwardingService>;
   commandTemplates?: Record<string, string | CommandTemplate>;
-  timeout?: number;
+  commandTimeout?: number;
   maxConnections?: number;
 }
 
@@ -31,6 +31,7 @@ export interface CommandResult {
   stdout: string;
   stderr: string;
   exitCode: number | null;
+  timedOut?: boolean;
 }
 
 export interface PortForwardInfo {

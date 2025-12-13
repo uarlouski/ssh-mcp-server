@@ -2,7 +2,7 @@ import { Client, ClientChannel, ConnectConfig, SFTPWrapper } from 'ssh2';
 import { readFile, stat } from 'fs/promises';
 import type { SSHConfig, CommandResult, PortForwardInfo, FileInfo, FileTransferResult, FileListResult, FileDeleteResult } from './types.js';
 import { createServer, Server as NetServer } from 'net';
-import { expandTilde } from './utils.js';
+import { expandTilde, validateCommandTimeout } from './utils.js';
 import { createReadStream, createWriteStream } from 'fs';
 
 interface ForwardingInfo {
@@ -74,7 +74,9 @@ export class SSHConnectionManager {
     });
   }
 
-  async executeCommand(config: SSHConfig, command: string): Promise<CommandResult> {
+  async executeCommand(config: SSHConfig, command: string, commandTimeout?: number): Promise<CommandResult> {
+    validateCommandTimeout(commandTimeout);
+
     const client = await this.getConnection(config);
 
     return new Promise((resolve, reject) => {
@@ -87,10 +89,45 @@ export class SSHConnectionManager {
         let stdout = '';
         let stderr = '';
         let exitCode: number | null = null;
+        let settled = false;
+        let timeoutId: NodeJS.Timeout | undefined;
+
+        const cleanup = () => {
+          if (timeoutId) {
+            clearTimeout(timeoutId);
+            timeoutId = undefined;
+          }
+        };
+
+        const resolveOnce = (result: CommandResult) => {
+          if (settled) return;
+          settled = true;
+          cleanup();
+          resolve(result);
+        };
+
+        const rejectOnce = (error: Error) => {
+          if (settled) return;
+          settled = true;
+          cleanup();
+          reject(error);
+        };
+
+        if (commandTimeout !== undefined) {
+          timeoutId = setTimeout(() => {
+            try {
+              stream.close();
+            } catch {
+              // ignore
+            }
+
+            resolveOnce({ stdout, stderr, exitCode: null, timedOut: true });
+          }, commandTimeout);
+        }
 
         stream.on('close', (code: number) => {
           exitCode = code;
-          resolve({ stdout, stderr, exitCode });
+          resolveOnce({ stdout, stderr, exitCode });
         });
 
         stream.on('data', (data: Buffer) => {
@@ -102,7 +139,7 @@ export class SSHConnectionManager {
         });
 
         stream.on('error', (err: Error) => {
-          reject(err);
+          rejectOnce(err);
         });
       });
     });

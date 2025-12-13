@@ -7,6 +7,7 @@ interface ExecuteTemplateArgs {
   connectionName: string;
   templateName: string;
   variables?: Record<string, string>;
+  commandTimeout?: number;
 }
 
 const definition = {
@@ -31,13 +32,17 @@ const definition = {
           type: 'string',
         },
       },
+      commandTimeout: {
+        type: 'number',
+        description: 'Optional command execution timeout in milliseconds (overrides global commandTimeout)',
+      },
     },
     required: ['connectionName', 'templateName'],
   },
 };
 
 const handler = async (args: ExecuteTemplateArgs, context: HandlerContext) => {
-  const { connectionName, templateName, variables } = args;
+  const { connectionName, templateName, variables, commandTimeout } = args;
 
   if (!connectionName) {
     throw new Error('connectionName is required');
@@ -58,7 +63,8 @@ const handler = async (args: ExecuteTemplateArgs, context: HandlerContext) => {
   }
 
   const sshConfig = context.configManager.getServer(connectionName);
-  const result = await context.sshManager.executeCommand(sshConfig, command);
+  const effectiveTimeout = commandTimeout ?? context.configManager.getCommandTimeout();
+  const result = await context.sshManager.executeCommand(sshConfig, command, effectiveTimeout);
 
   return buildToolResult({
     success: true,
@@ -69,6 +75,7 @@ const handler = async (args: ExecuteTemplateArgs, context: HandlerContext) => {
       stdout: result.stdout,
       stderr: result.stderr,
       exitCode: result.exitCode,
+      timedOut: result.timedOut === true,
     },
   });
 };

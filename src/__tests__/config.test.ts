@@ -19,7 +19,7 @@ describe('ConfigManager', () => {
       const mockConfig = {
         allowedHosts: ['example.com'],
         allowedCommands: ['ls', 'pwd'],
-        timeout: 5000,
+        commandTimeout: 5000,
         maxConnections: 3,
       };
 
@@ -224,10 +224,10 @@ describe('ConfigManager', () => {
     });
   });
 
-  describe('getTimeout', () => {
-    it('should return configured timeout', async () => {
+  describe('getCommandTimeout', () => {
+    it('should return configured commandTimeout', async () => {
       const mockConfig = {
-        timeout: 15000,
+        commandTimeout: 15000,
       };
 
       (existsSync as jest.Mock).mockReturnValue(true);
@@ -235,11 +235,24 @@ describe('ConfigManager', () => {
 
       await configManager.load();
 
-      expect(configManager.getTimeout()).toBe(15000);
+      expect(configManager.getCommandTimeout()).toBe(15000);
     });
 
-    it('should return default timeout when not configured', () => {
-      expect(configManager.getTimeout()).toBe(30000);
+    it('should return default commandTimeout when not configured', () => {
+      expect(configManager.getCommandTimeout()).toBe(30000);
+    });
+
+    it('should reject invalid commandTimeout values', async () => {
+      const mockConfig = {
+        commandTimeout: 0,
+      };
+
+      (existsSync as jest.Mock).mockReturnValue(true);
+      (readFile as jest.Mock).mockResolvedValue(JSON.stringify(mockConfig));
+
+      await expect(configManager.load()).rejects.toThrow(
+        'commandTimeout must be a positive number (milliseconds)'
+      );
     });
   });
 

@@ -168,7 +168,7 @@ The configuration file supports the following options:
     },
     "docker-stats": "docker stats {{container:--all}} --no-stream --format 'table {{.Name}}\\t{{.CPUPerc}}'"
   },
-  "timeout": 30000,
+  "commandTimeout": 30000,
   "maxConnections": 10
 }
 ```
@@ -274,9 +274,9 @@ Templates can be defined in two formats:
 
 The AI will recognize this matches the `k8s-pod-logs` template and execute it with the appropriate variables.
 
-#### `timeout` (optional)
+#### `commandTimeout` (optional)
 
-Connection timeout in milliseconds. Default: `30000` (30 seconds).
+Command execution timeout in milliseconds. Default: `30000` (30 seconds).
 
 #### `maxConnections` (optional)
 
@@ -295,6 +295,7 @@ Execute commands on remote servers.
 **Parameters:**
 - `connectionName` (string, required): Name of the server from your config
 - `command` (string, required): Command to execute
+- `commandTimeout` (number, optional): Command execution timeout in milliseconds (overrides global `commandTimeout`)
 
 **Example:**
 ```json
@@ -309,7 +310,8 @@ Execute commands on remote servers.
 {
   "stdout": "CONTAINER ID   IMAGE     COMMAND   ...",
   "stderr": "",
-  "exitCode": 0
+  "exitCode": 0,
+  "timedOut": false
 }
 ```
 
@@ -534,6 +536,7 @@ Execute a pre-configured command template with variable substitution.
 - `connectionName` (string, required): Name of the server from your config
 - `templateName` (string, required): Name of the command template
 - `variables` (object, optional): Key-value pairs for variable substitution
+- `commandTimeout` (number, optional): Command execution timeout in milliseconds (overrides global `commandTimeout`)
 
 **Example:**
 ```json
@@ -562,7 +565,8 @@ Execute a pre-configured command template with variable substitution.
   "result": {
     "stdout": "...",
     "stderr": "",
-    "exitCode": 0
+    "exitCode": 0,
+    "timedOut": false
   }
 }
 ```

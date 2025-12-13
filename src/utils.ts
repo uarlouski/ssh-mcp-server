@@ -34,3 +34,22 @@ export function validatePermissions(value: string): void {
     throw new Error('permissions must be a valid octal string (e.g., "0644", "755")');
   }
 }
+
+/**
+ * Validates the `commandTimeout` value (milliseconds).
+ *
+ * Behavior:
+ * - If `value` is `undefined` or `null`, validation is skipped (no-op).
+ * - Otherwise, `value` must be a positive, finite number.
+ *
+ * @param value The value to validate
+ * @throws Error if validation fails
+ */
+export function validateCommandTimeout(value: unknown): asserts value is number | undefined | null {
+  if (value === undefined || value === null) {
+    return;
+  }
+  if (typeof value !== 'number' || !Number.isFinite(value) || value <= 0) {
+    throw new Error('commandTimeout must be a positive number (milliseconds)');
+  }
+}

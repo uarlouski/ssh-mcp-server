@@ -4,6 +4,7 @@ import { buildToolResult } from './response-builder.js';
 interface ExecuteCommandArgs {
   connectionName: string;
   command: string;
+  commandTimeout?: number;
 }
 
 const definition = {
@@ -21,13 +22,17 @@ const definition = {
         type: 'string',
         description: 'Command to execute on the remote server',
       },
+      commandTimeout: {
+        type: 'number',
+        description: 'Optional command execution timeout in milliseconds (overrides global commandTimeout)',
+      },
     },
     required: ['connectionName', 'command'],
   },
 };
 
 const handler = async (args: ExecuteCommandArgs, context: HandlerContext) => {
-  const { connectionName, command } = args;
+  const { connectionName, command, commandTimeout } = args;
 
   const sshConfig = context.configManager.getServer(connectionName);
 
@@ -35,13 +40,15 @@ const handler = async (args: ExecuteCommandArgs, context: HandlerContext) => {
     throw new Error(`Command "${command}" is not in the allowed commands list`);
   }
 
-  const result = await context.sshManager.executeCommand(sshConfig, command);
+  const effectiveTimeout = commandTimeout ?? context.configManager.getCommandTimeout();
+  const result = await context.sshManager.executeCommand(sshConfig, command, effectiveTimeout);
 
   return buildToolResult({
     success: true,
     exitCode: result.exitCode,
     stdout: result.stdout,
     stderr: result.stderr,
+    timedOut: result.timedOut === true,
   });
 };
 
