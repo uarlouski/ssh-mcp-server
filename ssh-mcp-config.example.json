@@ -11,6 +11,11 @@
     "df",
     "curl"
   ],
+  "_comment_sshConfigImport": "Uncomment to import servers from ~/.ssh/config. Remove this field entirely to disable.",
+  "_sshConfigImport": {
+    "path": "~/.ssh/config",
+    "hosts": ["prod-*", "staging-*"]
+  },
   "servers": {
     "production-api": {
       "host": "api-prod-01.example.com",

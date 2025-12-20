@@ -18,6 +18,11 @@ export interface CommandTemplate {
   description?: string;
 }
 
+export interface SSHConfigImport {
+  path?: string;
+  hosts?: string[];
+}
+
 export interface Config {
   allowedCommands?: string[];
   servers?: Record<string, SSHConfig>;
@@ -25,6 +30,7 @@ export interface Config {
   commandTemplates?: Record<string, string | CommandTemplate>;
   commandTimeout?: number;
   maxConnections?: number;
+  sshConfigImport?: SSHConfigImport;
 }
 
 export interface CommandResult {

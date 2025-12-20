@@ -29,6 +29,7 @@ A Model Context Protocol (MCP) server that provides secure SSH capabilities for 
 - 🌉 **SSH Port Forwarding** - Create secure tunnels to access remote services
 - 🔄 **Connection Pooling** - Persistent connections with automatic management
 - 🔑 **SSH Key Authentication** - Secure authentication using SSH private keys
+- ⚙️ **SSH Config Integration** - Import servers from your existing SSJ config file
 - ✅ **Command Allowlisting** - Restrict which commands can be executed
 - 📦 **Named Services** - Pre-configured port forwarding services for common use cases
 - 🎯 **Command Templates** - Reusable parameterized commands with variable substitution
@@ -215,6 +216,39 @@ Named SSH server configurations. Each server must have:
   }
 }
 ```
+
+#### `sshConfigImport` (optional)
+
+Import server configurations from your existing SSH config file (e.g. `~/.ssh/config`). This feature allows you to reuse your existing SSH configurations without duplicating them in the MCP config file.
+
+**Benefits:**
+- 🔄 Reuse existing SSH configurations
+- 🎯 Import specific hosts using pattern matching
+- 🔒 Works cross-platform (macOS, Linux, Windows)
+
+**Configuration:**
+- `path` (string, optional): Path to SSH config file (default: `~/.ssh/config`)
+- `hosts` (array of strings, optional): Host patterns to import (e.g., `["prod-*", "staging-*"]`)
+  - Supports wildcards: `*` (matches any characters), `?` (matches single character)
+  - If omitted, imports all valid hosts (excluding wildcard-only hosts like `*`)
+
+**Note:** Simply defining `sshConfigImport` in your config enables SSH config import. To disable it, remove the `sshConfigImport` field entirely.
+
+**Example - Import specific hosts with pattern matching:**
+```json
+{
+  "sshConfigImport": {
+    "path": "/custom/path/to/ssh_config",
+    "hosts": ["prod-*", "staging-*"]
+  }
+}
+```
+
+**Notes:**
+- Only hosts with all required fields (`HostName`, `User`, `IdentityFile`) are imported
+- Wildcard SSH config entries (`Host *`) apply their settings to specific hosts but aren't imported as standalone servers
+- If the SSH config file doesn't exist, the server continues with manually defined servers
+- **Important**: If a server name exists in both manual configuration and SSH config import, the server will fail to start with a clear error message. Use the `hosts` pattern filter to avoid conflicts, or rename servers in one of the configurations.
 
 #### `portForwardingServices` (optional)
 

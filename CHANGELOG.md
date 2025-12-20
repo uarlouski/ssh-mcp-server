@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Import SSH server configurations from existing SSH config files
 - Command execution timeout support
   - Global `commandTimeout` configuration option (milliseconds)
   - Per-request `commandTimeout` parameter for `ssh_execute_command` and `ssh_execute_template` (overrides global)

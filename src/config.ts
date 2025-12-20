@@ -1,9 +1,9 @@
 import { readFile } from 'fs/promises';
 import { existsSync } from 'fs';
-import type { Config, SSHConfig, CommandTemplate } from './types.js';
+import type { Config, SSHConfig, CommandTemplate, SSHConfigImport } from './types.js';
 import { CommandParser } from './command-parser.js';
 import { expandTilde, validateCommandTimeout, validateRequiredString } from './utils.js';
-import { substituteVariables } from './template-processor.js';
+import { SSHConfigParser } from './ssh-config-parser.js';
 
 export class ConfigManager {
   private config: Config = {};
@@ -21,11 +21,61 @@ export class ConfigManager {
     try {
       const content = await readFile(this.configPath, 'utf-8');
       this.config = JSON.parse(content);
+      
+      if (this.config.sshConfigImport) {
+        await this.importSSHConfig(this.config.sshConfigImport);
+      }
+      
       this.validateConfig();
     } catch (error) {
       console.error(`Failed to load config: ${error}`);
       throw error;
     }
+  }
+
+  private async importSSHConfig(sshConfigImport: SSHConfigImport): Promise<void> {
+    console.error('[SSH-MCP] Importing SSH config...');
+    const importedServers = await SSHConfigParser.parseSSHConfig(
+      sshConfigImport
+    );
+
+    const importedCount = Object.keys(importedServers).length;
+    console.error(`[SSH-MCP] Found ${importedCount} server(s) in SSH config`);
+
+    this.config.servers = this.mergeServers(
+      this.config.servers,
+      importedServers
+    );
+
+    const serverNames = Object.keys(this.config.servers || {});
+    console.error(`[SSH-MCP] Total servers after import: ${serverNames.join(', ')}`);
+  }
+
+  private mergeServers(
+    existingServers: Record<string, SSHConfig> | undefined,
+    importedServers: Record<string, SSHConfig>
+  ): Record<string, SSHConfig> {
+    if (!existingServers || Object.keys(existingServers).length === 0) {
+      return importedServers;
+    }
+
+    const conflicts: string[] = [];
+    for (const name of Object.keys(importedServers)) {
+      if (existingServers[name]) {
+        conflicts.push(name);
+      }
+    }
+
+    if (conflicts.length > 0) {
+      throw new Error(
+        `SSH config import conflicts detected. The following server names exist in both ` +
+        `manual configuration and SSH config import: ${conflicts.join(', ')}. ` +
+        `Please rename or remove the conflicting servers from either your config ` +
+        `or filter them out using the 'hosts' pattern in sshConfigImport.`
+      );
+    }
+
+    return { ...existingServers, ...importedServers };
   }
 
   private validateConfig(): void {

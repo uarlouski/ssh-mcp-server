@@ -1,9 +1,13 @@
 import { ConfigManager } from '../config.js';
 import { readFile } from 'fs/promises';
 import { existsSync } from 'fs';
+import { join } from 'path';
+import { tmpdir } from 'os';
+import { SSHConfigParser } from '../ssh-config-parser.js';
 
 jest.mock('fs/promises');
 jest.mock('fs');
+jest.mock('../ssh-config-parser.js');
 
 describe('ConfigManager', () => {
   let configManager: ConfigManager;
@@ -1275,6 +1279,252 @@ describe('ConfigManager', () => {
       expect(servers[1].name).toBe('server2');
       expect(servers[2].name).toBe('server3');
       expect(servers[2].port).toBe(22); // default port
+    });
+  });
+
+  describe('SSH Config Import', () => {
+    beforeEach(() => {
+      // Mock the SSHConfigParser methods
+      (SSHConfigParser.parseSSHConfig as jest.Mock) = jest.fn();
+    });
+
+    it('should load servers from SSH config when sshConfigImport is enabled', async () => {
+      const mockConfig = {
+        sshConfigImport: {
+          path: '/mock/ssh/config',
+        },
+      };
+
+      const mockImportedServers = {
+        'test-server': {
+          host: 'test.example.com',
+          port: 2222,
+          username: 'testuser',
+          privateKeyPath: '~/.ssh/test_key',
+        },
+      };
+
+      (existsSync as jest.Mock).mockReturnValue(true);
+      (readFile as jest.Mock).mockResolvedValue(JSON.stringify(mockConfig));
+      (SSHConfigParser.parseSSHConfig as jest.Mock).mockResolvedValue(mockImportedServers);
+
+      await configManager.load();
+
+      expect(SSHConfigParser.parseSSHConfig).toHaveBeenCalledWith(mockConfig.sshConfigImport);
+      
+      const servers = configManager.listServers();
+      expect(servers.length).toBeGreaterThan(0);
+      
+      const testServer = servers.find(s => s.name === 'test-server');
+      expect(testServer).toBeDefined();
+      if (testServer) {
+        expect(testServer.host).toBe('test.example.com');
+        expect(testServer.username).toBe('testuser');
+        expect(testServer.port).toBe(2222);
+      }
+    });
+
+    it('should merge SSH config servers with existing servers', async () => {
+      const mockConfig = {
+        servers: {
+          'existing-server': {
+            host: 'existing.example.com',
+            port: 22,
+            username: 'existuser',
+            privateKeyPath: '~/.ssh/exist_key',
+          },
+        },
+        sshConfigImport: {
+          path: '/mock/ssh/config',
+        },
+      };
+
+      const mockImportedServers = {
+        'imported-server': {
+          host: 'imported.example.com',
+          port: 22,
+          username: 'importuser',
+          privateKeyPath: '~/.ssh/import_key',
+        },
+      };
+
+      const mockMergedServers = {
+        'existing-server': {
+          host: 'existing.example.com',
+          port: 22,
+          username: 'existuser',
+          privateKeyPath: '~/.ssh/exist_key',
+        },
+        'imported-server': {
+          host: 'imported.example.com',
+          port: 22,
+          username: 'importuser',
+          privateKeyPath: '~/.ssh/import_key',
+        },
+      };
+
+      (existsSync as jest.Mock).mockReturnValue(true);
+      (readFile as jest.Mock).mockResolvedValue(JSON.stringify(mockConfig));
+      (SSHConfigParser.parseSSHConfig as jest.Mock).mockResolvedValue(mockImportedServers);
+
+      await configManager.load();
+
+      const servers = configManager.listServers();
+      expect(servers.length).toBe(2);
+      
+      const existingServer = servers.find(s => s.name === 'existing-server');
+      const importedServer = servers.find(s => s.name === 'imported-server');
+      
+      expect(existingServer).toBeDefined();
+      expect(importedServer).toBeDefined();
+    });
+
+    it('should throw error when there are conflicting server names', async () => {
+      const mockConfig = {
+        servers: {
+          'duplicate-server': {
+            host: 'original-host.example.com',
+            port: 22,
+            username: 'originaluser',
+            privateKeyPath: '~/.ssh/original_key',
+          },
+        },
+        sshConfigImport: {
+          path: '/mock/ssh/config',
+        },
+      };
+
+      const mockImportedServers = {
+        'duplicate-server': {
+          host: 'new-host.example.com',
+          port: 3333,
+          username: 'newuser',
+          privateKeyPath: '~/.ssh/new_key',
+        },
+      };
+
+      (existsSync as jest.Mock).mockReturnValue(true);
+      (readFile as jest.Mock).mockResolvedValue(JSON.stringify(mockConfig));
+      (SSHConfigParser.parseSSHConfig as jest.Mock).mockResolvedValue(mockImportedServers);
+
+      await expect(configManager.load()).rejects.toThrow(/SSH config import conflicts detected/);
+      await expect(configManager.load()).rejects.toThrow(/duplicate-server/);
+    });
+
+    it('should suggest filtering in error message for conflicts', async () => {
+      const mockConfig = {
+        servers: {
+          'conflict-server': {
+            host: 'original.example.com',
+            port: 22,
+            username: 'user',
+            privateKeyPath: '~/.ssh/key',
+          },
+        },
+        sshConfigImport: {
+          path: '/mock/ssh/config',
+        },
+      };
+
+      const mockImportedServers = {
+        'conflict-server': {
+          host: 'imported.example.com',
+          port: 22,
+          username: 'user',
+          privateKeyPath: '~/.ssh/key',
+        },
+      };
+
+      (existsSync as jest.Mock).mockReturnValue(true);
+      (readFile as jest.Mock).mockResolvedValue(JSON.stringify(mockConfig));
+      (SSHConfigParser.parseSSHConfig as jest.Mock).mockResolvedValue(mockImportedServers);
+
+      await expect(configManager.load()).rejects.toThrow(/filter them out using the 'hosts' pattern/);
+    });
+
+
+    it('should filter imported servers by host patterns', async () => {
+      const mockConfig = {
+        sshConfigImport: {
+          enabled: true,
+          path: '/mock/ssh/config',
+          hosts: ['prod-*'],
+        },
+      };
+
+      // Parser should only return matching servers
+      const mockImportedServers = {
+        'prod-server-01': {
+          host: 'prod01.example.com',
+          port: 22,
+          username: 'produser',
+          privateKeyPath: '~/.ssh/prod_key',
+        },
+      };
+
+      (existsSync as jest.Mock).mockReturnValue(true);
+      (readFile as jest.Mock).mockResolvedValue(JSON.stringify(mockConfig));
+      (SSHConfigParser.parseSSHConfig as jest.Mock).mockResolvedValue(mockImportedServers);
+
+      await configManager.load();
+
+      expect(SSHConfigParser.parseSSHConfig).toHaveBeenCalledWith(mockConfig.sshConfigImport);
+
+      const servers = configManager.listServers();
+      const prodServer = servers.find(s => s.name === 'prod-server-01');
+      const devServer = servers.find(s => s.name === 'dev-server');
+      
+      expect(prodServer).toBeDefined();
+      expect(devServer).toBeUndefined();
+    });
+
+    it('should throw error if SSH config import fails', async () => {
+      const mockConfig = {
+        servers: {
+          'existing-server': {
+            host: 'existing.example.com',
+            port: 22,
+            username: 'existuser',
+            privateKeyPath: '~/.ssh/exist_key',
+          },
+        },
+        sshConfigImport: {
+          enabled: true,
+          path: '/non/existent/ssh/config',
+        },
+      };
+
+      (existsSync as jest.Mock).mockReturnValue(true);
+      (readFile as jest.Mock).mockResolvedValue(JSON.stringify(mockConfig));
+      (SSHConfigParser.parseSSHConfig as jest.Mock).mockRejectedValue(new Error('File not found'));
+      
+      // Import errors should propagate
+      await expect(configManager.load()).rejects.toThrow('File not found');
+    });
+
+    it('should not import when sshConfigImport is not defined', async () => {
+      const mockConfig = {
+        servers: {
+          'existing-server': {
+            host: 'existing.example.com',
+            port: 22,
+            username: 'existuser',
+            privateKeyPath: '~/.ssh/exist_key',
+          },
+        },
+      };
+
+      (existsSync as jest.Mock).mockReturnValue(true);
+      (readFile as jest.Mock).mockResolvedValue(JSON.stringify(mockConfig));
+
+      await configManager.load();
+
+      // Should not call parseSSHConfig when not defined
+      expect(SSHConfigParser.parseSSHConfig).not.toHaveBeenCalled();
+
+      const servers = configManager.listServers();
+      expect(servers).toHaveLength(1);
+      expect(servers[0].name).toBe('existing-server');
     });
   });
 });
