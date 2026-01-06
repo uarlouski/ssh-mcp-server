@@ -4,6 +4,8 @@ import type { SSHConfig, CommandResult, PortForwardInfo, FileInfo, FileTransferR
 import { createServer, Server as NetServer } from 'net';
 import { expandTilde, validateCommandTimeout } from './utils.js';
 import { createReadStream, createWriteStream } from 'fs';
+import { AuditLogger } from './logger.js';
+import { randomUUID } from 'crypto';
 
 interface ForwardingInfo {
   config: SSHConfig;
@@ -13,12 +15,19 @@ interface ForwardingInfo {
   server: NetServer;
 }
 
+interface ConnectionInfo {
+  client: Client;
+  sessionId: string;
+}
+
 export class SSHConnectionManager {
-  private connections: Map<string, Client> = new Map();
+  private connections: Map<string, ConnectionInfo> = new Map();
   private forwardingServers: Map<string, ForwardingInfo> = new Map();
   private maxConnections: number;
+  private auditLogger: AuditLogger;
 
-  constructor(maxConnections: number = 5) {
+  constructor(auditLogger: AuditLogger, maxConnections: number = 5) {
+    this.auditLogger = auditLogger;
     this.maxConnections = maxConnections;
   }
 
@@ -26,13 +35,13 @@ export class SSHConnectionManager {
     return `${config.username}@${config.host}:${config.port}`;
   }
 
-  async getConnection(config: SSHConfig): Promise<Client> {
+  async getConnection(config: SSHConfig): Promise<ConnectionInfo> {
     const key = this.getConnectionKey(config);
 
     if (this.connections.has(key)) {
-      const existingClient = this.connections.get(key)!;
-      if ((existingClient as any)._sock && !(existingClient as any)._sock.destroyed) {
-        return existingClient;
+      const existing = this.connections.get(key)!;
+      if ((existing.client as any)._sock && !(existing.client as any)._sock.destroyed) {
+        return existing;
       } else {
         this.connections.delete(key);
       }
@@ -43,9 +52,12 @@ export class SSHConnectionManager {
     }
 
     const client = await this.createConnection(config);
-    this.connections.set(key, client);
+    const sessionId = randomUUID();
+    const info: ConnectionInfo = { client, sessionId };
 
-    return client;
+    this.connections.set(key, info);
+
+    return info;
   }
 
   private async createConnection(config: SSHConfig): Promise<Client> {
@@ -77,11 +89,22 @@ export class SSHConnectionManager {
   async executeCommand(config: SSHConfig, command: string, commandTimeout?: number): Promise<CommandResult> {
     validateCommandTimeout(commandTimeout);
 
-    const client = await this.getConnection(config);
+    const { client, sessionId } = await this.getConnection(config);
 
     return new Promise((resolve, reject) => {
+      const startTime = Date.now();
+
       client.exec(command, (err, stream: ClientChannel) => {
         if (err) {
+          this.auditLogger.log({
+            sessionId,
+            timestamp: new Date().toISOString(),
+            connectionName: config.username + '@' + config.host,
+            command,
+            exitCode: null,
+            durationMs: Date.now() - startTime,
+            error: err.message
+          });
           reject(err);
           return;
         }
@@ -103,6 +126,17 @@ export class SSHConnectionManager {
           if (settled) return;
           settled = true;
           cleanup();
+
+          this.auditLogger.log({
+            sessionId,
+            timestamp: new Date().toISOString(),
+            connectionName: config.username + '@' + config.host,
+            command,
+            exitCode: result.exitCode,
+            durationMs: Date.now() - startTime,
+            error: result.timedOut ? 'Command timed out' : undefined
+          });
+
           resolve(result);
         };
 
@@ -110,6 +144,17 @@ export class SSHConnectionManager {
           if (settled) return;
           settled = true;
           cleanup();
+
+          this.auditLogger.log({
+            sessionId,
+            timestamp: new Date().toISOString(),
+            connectionName: config.username + '@' + config.host,
+            command,
+            exitCode: null,
+            durationMs: Date.now() - startTime,
+            error: error.message
+          });
+
           reject(error);
         };
 
@@ -151,7 +196,7 @@ export class SSHConnectionManager {
     remoteHost: string,
     remotePort: number
   ): Promise<{ localPort: number; status: string }> {
-    const client = await this.getConnection(config);
+    const { client } = await this.getConnection(config);
     const forwardKey = `${this.getConnectionKey(config)}:${localPort}->${remoteHost}:${remotePort}`;
 
     if (localPort !== 0 && this.forwardingServers.has(forwardKey)) {
@@ -277,14 +322,14 @@ export class SSHConnectionManager {
       this.forwardingServers.delete(key);
     }
 
-    for (const [key, client] of this.connections.entries()) {
-      client.end();
+    for (const [key, info] of this.connections.entries()) {
+      info.client.end();
       this.connections.delete(key);
     }
   }
 
   private async getSFTP(config: SSHConfig): Promise<SFTPWrapper> {
-    const client = await this.getConnection(config);
+    const { client } = await this.getConnection(config);
 
     return new Promise((resolve, reject) => {
       client.sftp((err, sftp) => {
@@ -304,7 +349,7 @@ export class SSHConnectionManager {
     permissions?: string
   ): Promise<FileTransferResult> {
     const expandedLocalPath = expandTilde(localPath);
-    
+
     try {
       const stats = await stat(expandedLocalPath);
       if (!stats.isFile()) {
