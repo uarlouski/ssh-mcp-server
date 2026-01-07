@@ -1,5 +1,5 @@
 import { ConfigManager } from '../config.js';
-import { readFile } from 'fs/promises';
+import { readFile, mkdir } from 'fs/promises';
 import { existsSync } from 'fs';
 import { join } from 'path';
 import { tmpdir } from 'os';
@@ -1311,10 +1311,10 @@ describe('ConfigManager', () => {
       await configManager.load();
 
       expect(SSHConfigParser.parseSSHConfig).toHaveBeenCalledWith(mockConfig.sshConfigImport);
-      
+
       const servers = configManager.listServers();
       expect(servers.length).toBeGreaterThan(0);
-      
+
       const testServer = servers.find(s => s.name === 'test-server');
       expect(testServer).toBeDefined();
       if (testServer) {
@@ -1371,10 +1371,10 @@ describe('ConfigManager', () => {
 
       const servers = configManager.listServers();
       expect(servers.length).toBe(2);
-      
+
       const existingServer = servers.find(s => s.name === 'existing-server');
       const importedServer = servers.find(s => s.name === 'imported-server');
-      
+
       expect(existingServer).toBeDefined();
       expect(importedServer).toBeDefined();
     });
@@ -1473,7 +1473,7 @@ describe('ConfigManager', () => {
       const servers = configManager.listServers();
       const prodServer = servers.find(s => s.name === 'prod-server-01');
       const devServer = servers.find(s => s.name === 'dev-server');
-      
+
       expect(prodServer).toBeDefined();
       expect(devServer).toBeUndefined();
     });
@@ -1497,7 +1497,7 @@ describe('ConfigManager', () => {
       (existsSync as jest.Mock).mockReturnValue(true);
       (readFile as jest.Mock).mockResolvedValue(JSON.stringify(mockConfig));
       (SSHConfigParser.parseSSHConfig as jest.Mock).mockRejectedValue(new Error('File not found'));
-      
+
       // Import errors should propagate
       await expect(configManager.load()).rejects.toThrow('File not found');
     });
@@ -1525,6 +1525,105 @@ describe('ConfigManager', () => {
       const servers = configManager.listServers();
       expect(servers).toHaveLength(1);
       expect(servers[0].name).toBe('existing-server');
+    });
+  });
+
+  describe('Audit Log Configuration', () => {
+    it('should accept valid audit log config', async () => {
+      const mockConfig = {
+        auditLog: {
+          enabled: true,
+          folder: '/tmp/audit-logs'
+        }
+      };
+
+      (existsSync as jest.Mock).mockReturnValue(true);
+      (readFile as jest.Mock).mockResolvedValue(JSON.stringify(mockConfig));
+
+      await expect(configManager.load()).resolves.not.toThrow();
+      const auditConfig = configManager.getAuditLogConfig();
+      expect(auditConfig).toBeDefined();
+      expect(auditConfig?.folder).toBe('/tmp/audit-logs');
+    });
+
+    it('should allow audit log with default folder', async () => {
+      const mockConfig = {
+        auditLog: {
+          enabled: true
+        }
+      };
+
+      (existsSync as jest.Mock).mockReturnValue(true);
+      (readFile as jest.Mock).mockResolvedValue(JSON.stringify(mockConfig));
+
+      await configManager.load();
+      const auditConfig = configManager.getAuditLogConfig();
+      expect(auditConfig?.folder).toBe(process.cwd());
+    });
+
+    it('should reject audit log with invalid folder type', async () => {
+      const mockConfig = {
+        auditLog: {
+          enabled: true,
+          folder: 123
+        }
+      };
+
+      (existsSync as jest.Mock).mockReturnValue(true);
+      (readFile as jest.Mock).mockResolvedValue(JSON.stringify(mockConfig));
+
+      await expect(configManager.load()).rejects.toThrow(
+        'auditLog.folder must be a non-empty string if provided'
+      );
+    });
+
+    it('should reject audit log with empty folder path', async () => {
+      const mockConfig = {
+        auditLog: {
+          enabled: true,
+          folder: ''
+        }
+      };
+
+      (existsSync as jest.Mock).mockReturnValue(true);
+      (readFile as jest.Mock).mockResolvedValue(JSON.stringify(mockConfig));
+
+      await expect(configManager.load()).rejects.toThrow(
+        'auditLog.folder must be a non-empty string if provided'
+      );
+    });
+    it('should create audit log directory if it does not exist', async () => {
+      const mockConfig = {
+        auditLog: {
+          enabled: true,
+          folder: '/tmp/new-logs'
+        }
+      };
+
+      (existsSync as jest.Mock).mockReturnValue(true);
+      (readFile as jest.Mock).mockResolvedValue(JSON.stringify(mockConfig));
+      (mkdir as jest.Mock).mockResolvedValue(undefined);
+
+      await expect(configManager.load()).resolves.not.toThrow();
+
+      expect(mkdir).toHaveBeenCalledWith('/tmp/new-logs', { recursive: true });
+    });
+
+    it('should reject audit log if directory creation fails', async () => {
+      const mockConfig = {
+        auditLog: {
+          enabled: true,
+          folder: '/invalid/path'
+        }
+      };
+
+      (existsSync as jest.Mock).mockReturnValue(true);
+      (readFile as jest.Mock).mockResolvedValue(JSON.stringify(mockConfig));
+      (mkdir as jest.Mock).mockRejectedValue(new Error('Permission denied'));
+
+      await expect(configManager.load()).rejects.toThrow(
+        "Failed to create audit log directory '/invalid/path': Error: Permission denied"
+      );
     });
   });
 });

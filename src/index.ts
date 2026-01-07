@@ -9,6 +9,7 @@ import {
 import { SSHConnectionManager } from './ssh-manager.js';
 import { ConfigManager } from './config.js';
 import { tools, handlers } from './tools/registry.js';
+import { AuditLogger } from './logger.js';
 import type { HandlerContext } from './tools/types.js';
 import { join } from 'path';
 import { existsSync } from 'fs';
@@ -31,9 +32,15 @@ if (configPathArg) {
 }
 
 const configManager = new ConfigManager(configPath);
-const sshManager = new SSHConnectionManager();
-
 await configManager.load();
+
+const auditConfig = configManager.getAuditLogConfig();
+const auditLogger = new AuditLogger(
+  auditConfig?.enabled ?? false,
+  auditConfig?.folder ?? ''
+);
+
+const sshManager = new SSHConnectionManager(auditLogger);
 
 const server = new Server(
   {

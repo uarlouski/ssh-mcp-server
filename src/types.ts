@@ -23,6 +23,21 @@ export interface SSHConfigImport {
   hosts?: string[];
 }
 
+export interface AuditLogConfig {
+  enabled: boolean;
+  folder?: string;
+}
+
+export interface AuditLogEntry {
+  sessionId: string;
+  timestamp: string;
+  connectionName: string;
+  command: string;
+  exitCode: number | null;
+  durationMs: number;
+  error?: string;
+}
+
 export interface Config {
   allowedCommands?: string[];
   servers?: Record<string, SSHConfig>;
@@ -31,6 +46,7 @@ export interface Config {
   commandTimeout?: number;
   maxConnections?: number;
   sshConfigImport?: SSHConfigImport;
+  auditLog?: AuditLogConfig;
 }
 
 export interface CommandResult {

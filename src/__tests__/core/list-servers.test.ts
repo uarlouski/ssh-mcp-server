@@ -22,7 +22,7 @@ describe('handleListServers', () => {
 
   beforeEach(() => {
     mockConfigManager = new ConfigManager('test') as jest.Mocked<ConfigManager>;
-    mockSSHManager = new SSHConnectionManager() as jest.Mocked<SSHConnectionManager>;
+    mockSSHManager = new SSHConnectionManager({} as any) as jest.Mocked<SSHConnectionManager>;
 
     context = {
       configManager: mockConfigManager,
@@ -71,14 +71,14 @@ describe('handleListServers', () => {
       expect(response.success).toBe(true);
       expect(response.count).toBe(2);
       expect(response.servers).toHaveLength(2);
-      
+
       expect(response.servers[0]).toEqual({
         name: 'production-api',
         host: 'api-prod-01.example.com',
         port: 22,
         username: 'deploy',
       });
-      
+
       expect(response.servers[1]).toEqual({
         name: 'staging-db',
         host: 'db-staging.example.com',

@@ -33,6 +33,7 @@ A Model Context Protocol (MCP) server that provides secure SSH capabilities for 
 - ✅ **Command Allowlisting** - Restrict which commands can be executed
 - 📦 **Named Services** - Pre-configured port forwarding services for common use cases
 - 🎯 **Command Templates** - Reusable parameterized commands with variable substitution
+- 📝 **Audit Logging** - Comprehensive JSONL-based audit logging for compliance and tracking
 
 ## Installation
 
@@ -315,6 +316,21 @@ Command execution timeout in milliseconds. Default: `30000` (30 seconds).
 #### `maxConnections` (optional)
 
 Maximum number of concurrent SSH connections. Default: `5`.
+
+#### `auditLog` (optional)
+
+Configure audit logging for SSH sessions.
+
+- `enabled` (boolean, optional): Enable audit logging (default: false)
+- `folder` (string, optional): Path to store audit logs (defaults to current directory)
+
+**Example:**
+```json
+"auditLog": {
+  "enabled": true,
+  "folder": "~/ssh-audit-logs"
+}
+```
 
 ### Complete Example
 

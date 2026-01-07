@@ -25,7 +25,7 @@ describe('handleExecuteTemplate', () => {
 
   beforeEach(() => {
     mockConfigManager = new ConfigManager('test') as jest.Mocked<ConfigManager>;
-    mockSSHManager = new SSHConnectionManager() as jest.Mocked<SSHConnectionManager>;
+    mockSSHManager = new SSHConnectionManager({} as any) as jest.Mocked<SSHConnectionManager>;
     mockSubstituteVariables = substituteVariables as jest.MockedFunction<typeof substituteVariables>;
 
     context = {

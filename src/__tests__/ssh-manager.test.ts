@@ -3,18 +3,22 @@ import type { SSHConfig } from '../types.js';
 import { Client } from 'ssh2';
 import { readFile, stat } from 'fs/promises';
 import { createReadStream, createWriteStream } from 'fs';
+import { AuditLogger } from '../logger.js';
 
 jest.mock('ssh2');
 jest.mock('fs/promises');
 jest.mock('fs');
+jest.mock('../logger.js');
 
 describe('SSHConnectionManager', () => {
   let sshManager: SSHConnectionManager;
   let mockClient: jest.Mocked<Client>;
+  let mockAuditLogger: jest.Mocked<AuditLogger>;
 
   beforeEach(() => {
     jest.clearAllMocks();
-    sshManager = new SSHConnectionManager(5);
+    mockAuditLogger = new AuditLogger(true, '/tmp') as jest.Mocked<AuditLogger>;
+    sshManager = new SSHConnectionManager(mockAuditLogger, 5);
 
     mockClient = {
       connect: jest.fn(),
@@ -51,7 +55,7 @@ describe('SSHConnectionManager', () => {
         return mockClient;
       });
 
-      const client = await sshManager.getConnection(sshConfig);
+      const { client } = await sshManager.getConnection(sshConfig);
 
       expect(Client).toHaveBeenCalled();
       expect(readFile).toHaveBeenCalledWith('/path/to/key', 'utf-8');
@@ -102,15 +106,16 @@ describe('SSHConnectionManager', () => {
         return mockClient;
       });
 
-      const client1 = await sshManager.getConnection(sshConfig);
-      const client2 = await sshManager.getConnection(sshConfig);
+      const result1 = await sshManager.getConnection(sshConfig);
+      const result2 = await sshManager.getConnection(sshConfig);
 
-      expect(client1).toBe(client2);
+      expect(result1.client).toBe(result2.client);
+      expect(result1.sessionId).toBe(result2.sessionId);
       expect(Client).toHaveBeenCalledTimes(1);
     });
 
     it('should throw error when max connections reached', async () => {
-      const smallManager = new SSHConnectionManager(1);
+      const smallManager = new SSHConnectionManager(mockAuditLogger, 1);
 
       mockClient.on.mockImplementation((event: string, callback: any) => {
         if (event === 'ready') {
@@ -199,6 +204,12 @@ describe('SSHConnectionManager', () => {
         stderr: '',
         exitCode: 0,
       });
+
+      expect(mockAuditLogger.log).toHaveBeenCalledWith(expect.objectContaining({
+        command: 'ls -la',
+        exitCode: 0,
+        sessionId: expect.any(String),
+      }));
     });
 
     it('should capture stderr output', async () => {

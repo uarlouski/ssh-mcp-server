@@ -1,4 +1,4 @@
-import { readFile } from 'fs/promises';
+import { readFile, mkdir } from 'fs/promises';
 import { existsSync } from 'fs';
 import type { Config, SSHConfig, CommandTemplate, SSHConfigImport } from './types.js';
 import { CommandParser } from './command-parser.js';
@@ -21,12 +21,34 @@ export class ConfigManager {
     try {
       const content = await readFile(this.configPath, 'utf-8');
       this.config = JSON.parse(content);
-      
+
       if (this.config.sshConfigImport) {
         await this.importSSHConfig(this.config.sshConfigImport);
       }
-      
-      this.validateConfig();
+
+      validateCommandTimeout(this.config.commandTimeout);
+
+      if (this.config.servers) {
+        for (const [serverName, serverConfig] of Object.entries(this.config.servers)) {
+          this.validateServerConfig(serverName, serverConfig);
+        }
+      }
+
+      if (this.config.portForwardingServices) {
+        for (const [serviceName, serviceConfig] of Object.entries(this.config.portForwardingServices)) {
+          this.validatePortForwardingService(serviceName, serviceConfig);
+        }
+      }
+
+      if (this.config.commandTemplates) {
+        for (const [templateName, template] of Object.entries(this.config.commandTemplates)) {
+          this.validateCommandTemplate(templateName, template);
+        }
+      }
+
+      if (this.config.auditLog) {
+        await this.validateAuditLog(this.config.auditLog);
+      }
     } catch (error) {
       console.error(`Failed to load config: ${error}`);
       throw error;
@@ -78,25 +100,33 @@ export class ConfigManager {
     return { ...existingServers, ...importedServers };
   }
 
-  private validateConfig(): void {
-    validateCommandTimeout(this.config.commandTimeout);
+  private async validateAuditLog(auditLog: any): Promise<void> {
+    const errors: string[] = [];
 
-    if (this.config.servers) {
-      for (const [serverName, serverConfig] of Object.entries(this.config.servers)) {
-        this.validateServerConfig(serverName, serverConfig);
+    if (auditLog.enabled !== undefined && typeof auditLog.enabled !== 'boolean') {
+      errors.push('auditLog.enabled must be a boolean');
+    }
+
+    if (auditLog.enabled) {
+      if (auditLog.folder !== undefined) {
+        if (this.isEmptyValue(auditLog.folder)) {
+          errors.push('auditLog.folder must be a non-empty string if provided');
+        } else {
+          try {
+            await mkdir(auditLog.folder, { recursive: true });
+          } catch (error) {
+            errors.push(`Failed to create audit log directory '${auditLog.folder}': ${error}`);
+          }
+        }
+      } else {
+        // If folder is undefined, it defaults to process.cwd() which implies current dir.
       }
     }
 
-    if (this.config.portForwardingServices) {
-      for (const [serviceName, serviceConfig] of Object.entries(this.config.portForwardingServices)) {
-        this.validatePortForwardingService(serviceName, serviceConfig);
-      }
-    }
-
-    if (this.config.commandTemplates) {
-      for (const [templateName, template] of Object.entries(this.config.commandTemplates)) {
-        this.validateCommandTemplate(templateName, template);
-      }
+    if (errors.length > 0) {
+      throw new Error(
+        `Invalid audit log configuration:\n  - ${errors.join('\n  - ')}`
+      );
     }
   }
 
@@ -297,5 +327,13 @@ export class ConfigManager {
       port: server.port || 22,
       username: server.username,
     }));
+  }
+
+  getAuditLogConfig() {
+    if (!this.config.auditLog) return undefined;
+    return {
+      enabled: this.config.auditLog.enabled,
+      folder: this.config.auditLog.folder ? expandTilde(this.config.auditLog.folder) : process.cwd()
+    };
   }
 }

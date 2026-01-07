@@ -14,7 +14,10 @@
   "_comment_sshConfigImport": "Uncomment to import servers from ~/.ssh/config. Remove this field entirely to disable.",
   "_sshConfigImport": {
     "path": "~/.ssh/config",
-    "hosts": ["prod-*", "staging-*"]
+    "hosts": [
+      "prod-*",
+      "staging-*"
+    ]
   },
   "servers": {
     "production-api": {
@@ -61,5 +64,9 @@
     }
   },
   "commandTimeout": 30000,
+  "auditLog": {
+    "enabled": false,
+    "folder": "~/.ssh-mcp-server/logs"
+  },
   "maxConnections": 10
 }
