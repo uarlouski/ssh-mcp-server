@@ -45,7 +45,7 @@ const sshManager = new SSHConnectionManager(auditLogger);
 const server = new Server(
   {
     name: 'ssh-mcp-server',
-    version: '1.4.0',
+    version: '1.5.0',
   },
   {
     capabilities: {

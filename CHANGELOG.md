@@ -5,12 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [1.5.0] - 2025-02-12
 
 ### Added
 - Implement command audit logging for SSH sessions
 
-## [1.4.0] - 2024-12-20
+## [1.4.0] - 2025-12-20
 
 ### Added
 - Import SSH server configurations from existing SSH config files
@@ -23,14 +23,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
 - Remove unused global `timeout` configuration option
 
-## [1.3.0] - 2024-12-08
+## [1.3.0] - 2025-12-08
 
 ### Added
 - Command Template Tools:
   - `ssh_execute_template` tool to execute pre-configured command templates with variable substitution
   - `ssh_list_templates` tool to list all available templates with their descriptions and required variables
 
-## [1.2.0] - 2024-12-06
+## [1.2.0] - 2025-12-06
 
 ### Added
 - SFTP Tools:

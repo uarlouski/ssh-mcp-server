@@ -1,6 +1,6 @@
 {
   "name": "@uarlouski/ssh-mcp-server",
-  "version": "1.4.0",
+  "version": "1.5.0",
   "description": "MCP server enabling AI assistants to securely execute SSH commands, transfer files via SFTP, manage port forwarding, and use parameterized command templates with comprehensive security controls",
   "type": "module",
   "main": "dist/index.js",
