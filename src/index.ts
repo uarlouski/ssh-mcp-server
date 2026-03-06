@@ -1,18 +1,25 @@
 #!/usr/bin/env node
 
-import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
-import {
-  CallToolRequestSchema,
-  ListToolsRequestSchema,
-} from '@modelcontextprotocol/sdk/types.js';
 import { SSHConnectionManager } from './ssh-manager.js';
 import { ConfigManager } from './config.js';
-import { tools, handlers } from './tools/registry.js';
 import { AuditLogger } from './logger.js';
 import type { HandlerContext } from './tools/types.js';
 import { join } from 'path';
 import { existsSync } from 'fs';
+import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { listRemoteFiles } from './tools/sftp/list-remote-files.js';
+import { uploadFile } from './tools/sftp/upload-file.js';
+import { downloadFile } from './tools/sftp/download-file.js';
+import { deleteRemoteFile } from './tools/sftp/delete-remote-file.js';
+import { executeCommand } from './tools/core/execute-command.js';
+import { listServers } from './tools/core/list-servers.js';
+import { portForward } from './tools/port-forward/port-forward.js';
+import { closePortForward } from './tools/port-forward/close-port-forward.js';
+import { listPortForwards } from './tools/port-forward/list-port-forwards.js';
+import { forwardService } from './tools/port-forward/forward-service.js';
+import { executeTemplate } from './tools/templates/execute-template.js';
+import { listTemplates } from './tools/templates/list-templates.js';
 
 const args = process.argv.slice(2);
 const configPathArg = args.find(arg => arg.startsWith('--configPath='));
@@ -42,57 +49,45 @@ const auditLogger = new AuditLogger(
 
 const sshManager = new SSHConnectionManager(auditLogger);
 
-const server = new Server(
-  {
-    name: 'ssh-mcp-server',
-    version: '1.5.0',
-  },
-  {
-    capabilities: {
-      tools: {},
+const mcpServer = new McpServer({
+  name: 'ssh-mcp-server',
+  version: '1.5.0',
+});
+
+const definitions = [
+  listRemoteFiles,
+  uploadFile,
+  downloadFile,
+  deleteRemoteFile,
+  executeCommand,
+  listServers,
+  portForward,
+  closePortForward,
+  listPortForwards,
+  forwardService,
+  executeTemplate,
+  listTemplates
+];
+
+for (const def of definitions) {
+  mcpServer.registerTool(
+    def.name,
+    {
+      description: def.description,
+      inputSchema: def.parameters,
     },
-  }
-);
-
-const handlerContext: HandlerContext = {
-  sshManager,
-  configManager,
-};
-
-server.setRequestHandler(ListToolsRequestSchema, async () => {
-  return { tools };
-});
-
-server.setRequestHandler(CallToolRequestSchema, async (request) => {
-  const { name, arguments: args } = request.params;
-
-  try {
-    const handler = handlers.get(name);
-    if (handler) {
-      return await handler(args, handlerContext);
+    async (args: any) => {
+      return def.handler(args, {
+        sshManager,
+        configManager,
+      });
     }
-
-    throw new Error(`Unknown tool: ${name}`);
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    return {
-      content: [
-        {
-          type: 'text',
-          text: JSON.stringify({
-            success: false,
-            error: errorMessage,
-          }, null, 2),
-        },
-      ],
-      isError: true,
-    };
-  }
-});
+  );
+}
 
 async function main() {
   const transport = new StdioServerTransport();
-  await server.connect(transport);
+  await mcpServer.connect(transport);
 
   console.error('SSH MCP Server running on stdio');
 

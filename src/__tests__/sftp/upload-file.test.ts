@@ -115,7 +115,7 @@ describe('handleUploadFile', () => {
             uploadFile.handler(
                 {
                     connectionName: 'production',
-                    localPath: undefined,
+                    localPath: undefined as any,
                     remotePath: '/var/www/file.txt',
                 },
                 context
@@ -129,7 +129,7 @@ describe('handleUploadFile', () => {
                 {
                     connectionName: 'production',
                     localPath: '/tmp/file.txt',
-                    remotePath: undefined,
+                    remotePath: undefined as any,
                 },
                 context
             )

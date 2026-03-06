@@ -1,56 +1,36 @@
-import type { ToolRegistration, HandlerContext } from '../types.js';
+import type { HandlerContext, ToolDefinition } from '../types.js';
 import { buildToolResult } from '../response-builder.js';
+import z from 'zod';
 
-interface ClosePortForwardArgs {
-  connectionName: string;
-  localPort: number;
-}
+const parameters = {
+  connectionName: z.string().describe('Name of a pre-configured SSH server from config.json'),
+  localPort: z.number().describe('Local port that was forwarded'),
+};
 
-const definition = {
+export const closePortForward: ToolDefinition<typeof parameters, HandlerContext> = {
   name: 'ssh_close_port_forward',
   description: 'Close an active SSH port forwarding tunnel. Only connectionName and localPort are needed.',
-  inputSchema: {
-    type: 'object',
-    properties: {
-      connectionName: {
-        type: 'string',
-        description: 'Name of a pre-configured SSH server from config.json',
-      },
-      localPort: {
-        type: 'number',
-        description: 'Local port that was forwarded',
-      },
-    },
-    required: ['connectionName', 'localPort'],
-  },
-};
+  parameters,
+  handler: async ({ connectionName, localPort }, context) => {
+    const sshConfig = context.configManager.getServer(connectionName);
 
-const handler = async (args: ClosePortForwardArgs, context: HandlerContext) => {
-  const { connectionName, localPort } = args;
+    const forwards = context.sshManager.listPortForwards();
+    const forward = forwards.find(f =>
+      f.sshHost === sshConfig.host &&
+      f.sshPort === sshConfig.port &&
+      f.sshUsername === sshConfig.username &&
+      f.localPort === localPort
+    );
 
-  const sshConfig = context.configManager.getServer(connectionName);
+    if (!forward) {
+      throw new Error(`No active port forward found for ${connectionName} on local port ${localPort}`);
+    }
 
-  const forwards = context.sshManager.listPortForwards();
-  const forward = forwards.find(f =>
-    f.sshHost === sshConfig.host &&
-    f.sshPort === sshConfig.port &&
-    f.sshUsername === sshConfig.username &&
-    f.localPort === localPort
-  );
+    await context.sshManager.closePortForward(sshConfig, localPort, forward.remoteHost, forward.remotePort);
 
-  if (!forward) {
-    throw new Error(`No active port forward found for ${connectionName} on local port ${localPort}`);
+    return buildToolResult({
+      success: true,
+      message: `Port forwarding closed: localhost:${localPort} -> ${forward.remoteHost}:${forward.remotePort}`,
+    });
   }
-
-  await context.sshManager.closePortForward(sshConfig, localPort, forward.remoteHost, forward.remotePort);
-
-  return buildToolResult({
-    success: true,
-    message: `Port forwarding closed: localhost:${localPort} -> ${forward.remoteHost}:${forward.remotePort}`,
-  });
-};
-
-export const closePortForward = <ToolRegistration<ClosePortForwardArgs>>{
-  definition,
-  handler,
 };

@@ -76,7 +76,7 @@ describe('handleDownloadFile', () => {
             downloadFile.handler(
                 {
                     connectionName: 'production',
-                    remotePath: undefined,
+                    remotePath: undefined as any,
                     localPath: '/tmp/app.log',
                 },
                 context
@@ -90,7 +90,7 @@ describe('handleDownloadFile', () => {
                 {
                     connectionName: 'production',
                     remotePath: '/var/log/app.log',
-                    localPath: undefined,
+                    localPath: undefined as any,
                 },
                 context
             )
