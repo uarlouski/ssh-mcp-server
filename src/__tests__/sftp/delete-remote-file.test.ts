@@ -63,7 +63,7 @@ describe('handleDeleteRemoteFile', () => {
     it('should throw validation error when remotePath is missing', async () => {
         await expect(
             deleteRemoteFile.handler(
-                { connectionName: 'production', remotePath: undefined },
+                { connectionName: 'production', remotePath: undefined as any },
                 context
             )
         ).rejects.toThrow('remotePath is required and must be a non-empty string');

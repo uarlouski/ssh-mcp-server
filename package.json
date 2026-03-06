@@ -82,11 +82,12 @@
     "url": "https://github.com/uarlouski/ssh-mcp-server/issues"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.0.0",
+    "@modelcontextprotocol/sdk": "^1.27.1",
     "picomatch": "^4.0.3",
     "shell-quote": "^1.8.3",
     "ssh-config": "^5.0.4",
-    "ssh2": "^1.15.0"
+    "ssh2": "^1.15.0",
+    "zod": "^4.3.6"
   },
   "devDependencies": {
     "@types/jest": "^29.5.0",

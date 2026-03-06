@@ -1,58 +1,34 @@
-import type { ToolRegistration, HandlerContext } from '../types.js';
+import type { HandlerContext, ToolDefinition } from '../types.js';
 import { buildToolResult } from '../response-builder.js';
+import z from 'zod';
 
-interface ExecuteCommandArgs {
-  connectionName: string;
-  command: string;
-  commandTimeout?: number;
-}
+const parameters = {
+  connectionName: z.string().describe('Name of a pre-configured SSH server from config.json'),
+  command: z.string().describe('Command to execute on the remote server'),
+  commandTimeout: z.number().optional().describe('Optional command execution timeout in milliseconds (overrides global commandTimeout)'),
+};
 
-const definition = {
+export const executeCommand: ToolDefinition<typeof parameters, HandlerContext> = {
   name: 'ssh_execute_command',
   description:
     'Execute a command on a remote SSH server. The connectionName must reference a pre-configured server in config.json.',
-  inputSchema: {
-    type: 'object',
-    properties: {
-      connectionName: {
-        type: 'string',
-        description: 'Name of a pre-configured SSH server from config.json',
-      },
-      command: {
-        type: 'string',
-        description: 'Command to execute on the remote server',
-      },
-      commandTimeout: {
-        type: 'number',
-        description: 'Optional command execution timeout in milliseconds (overrides global commandTimeout)',
-      },
-    },
-    required: ['connectionName', 'command'],
-  },
-};
+  parameters,
+  handler: async ({ connectionName, command, commandTimeout }, context) => {
+    const sshConfig = context.configManager.getServer(connectionName);
 
-const handler = async (args: ExecuteCommandArgs, context: HandlerContext) => {
-  const { connectionName, command, commandTimeout } = args;
+    if (!context.configManager.isCommandAllowed(command)) {
+      throw new Error(`Command "${command}" is not in the allowed commands list`);
+    }
 
-  const sshConfig = context.configManager.getServer(connectionName);
+    const effectiveTimeout = commandTimeout ?? context.configManager.getCommandTimeout();
+    const result = await context.sshManager.executeCommand(sshConfig, command, effectiveTimeout);
 
-  if (!context.configManager.isCommandAllowed(command)) {
-    throw new Error(`Command "${command}" is not in the allowed commands list`);
+    return buildToolResult({
+      success: true,
+      exitCode: result.exitCode,
+      stdout: result.stdout,
+      stderr: result.stderr,
+      timedOut: result.timedOut === true,
+    });
   }
-
-  const effectiveTimeout = commandTimeout ?? context.configManager.getCommandTimeout();
-  const result = await context.sshManager.executeCommand(sshConfig, command, effectiveTimeout);
-
-  return buildToolResult({
-    success: true,
-    exitCode: result.exitCode,
-    stdout: result.stdout,
-    stderr: result.stderr,
-    timedOut: result.timedOut === true,
-  });
-};
-
-export const executeCommand = <ToolRegistration<ExecuteCommandArgs>>{
-  definition,
-  handler,
 };

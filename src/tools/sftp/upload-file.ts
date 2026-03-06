@@ -1,69 +1,41 @@
-import type { ToolRegistration, HandlerContext } from '../types.js';
+import type { HandlerContext, ToolDefinition } from '../types.js';
 import { validateRequiredString, validatePermissions } from '../../utils.js';
 import { buildToolResult } from '../response-builder.js';
+import z from 'zod';
 
-interface UploadFileArgs {
-  connectionName?: string;
-  localPath?: string;
-  remotePath?: string;
-  permissions?: string;
-}
+const parameters = {
+  connectionName: z.string().describe('Name of a pre-configured SSH server from config.json'),
+  localPath: z.string().describe('Local file path to upload'),
+  remotePath: z.string().describe('Remote destination path'),
+  permissions: z.string().optional().describe('Optional file permissions in octal format (e.g., "0644", "0755")'),
+};
 
-const definition = {
+export const uploadFile: ToolDefinition<typeof parameters, HandlerContext> = {
   name: 'ssh_upload_file',
   description:
     'Upload a file from local system to remote server via SFTP. The connectionName must reference a pre-configured server in config.json.',
-  inputSchema: {
-    type: 'object',
-    properties: {
-      connectionName: {
-        type: 'string',
-        description: 'Name of a pre-configured SSH server from config.json',
-      },
-      localPath: {
-        type: 'string',
-        description: 'Local file path to upload',
-      },
-      remotePath: {
-        type: 'string',
-        description: 'Remote destination path',
-      },
-      permissions: {
-        type: 'string',
-        description: 'Optional file permissions in octal format (e.g., "0644", "0755")',
-      },
-    },
-    required: ['connectionName', 'localPath', 'remotePath'],
-  },
-};
+  parameters,
+  handler: async ({ connectionName, localPath, remotePath, permissions }, context) => {
+    validateRequiredString(localPath, 'localPath');
+    validateRequiredString(remotePath, 'remotePath');
 
-const handler = async (args: UploadFileArgs, context: HandlerContext) => {
-  const { connectionName, localPath, remotePath, permissions } = args;
+    if (permissions) {
+      validatePermissions(permissions);
+    }
 
-  validateRequiredString(localPath, 'localPath');
-  validateRequiredString(remotePath, 'remotePath');
+    const sshConfig = context.configManager.getServer(connectionName);
+    const result = await context.sshManager.uploadFile(sshConfig, localPath, remotePath, permissions);
 
-  if (permissions) {
-    validatePermissions(permissions);
+    if (!result.success) {
+      throw new Error(result.message);
+    }
+
+    return buildToolResult({
+      success: result.success,
+      bytesTransferred: result.bytesTransferred,
+      message: result.message,
+      localPath,
+      remotePath,
+    });
   }
-
-  const sshConfig = context.configManager.getServer(connectionName);
-  const result = await context.sshManager.uploadFile(sshConfig, localPath, remotePath, permissions);
-
-  if (!result.success) {
-    throw new Error(result.message);
-  }
-
-  return buildToolResult({
-    success: result.success,
-    bytesTransferred: result.bytesTransferred,
-    message: result.message,
-    localPath,
-    remotePath,
-  });
-};
-
-export const uploadFile = <ToolRegistration<UploadFileArgs>>{
-  definition,
-  handler,
 };

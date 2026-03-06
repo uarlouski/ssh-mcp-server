@@ -361,24 +361,23 @@ describe('handleListServers', () => {
 
   describe('Tool Definition', () => {
     it('should have correct tool name', () => {
-      expect(listServers.definition.name).toBe('ssh_list_servers');
+      expect(listServers.name).toBe('ssh_list_servers');
     });
 
     it('should have a description', () => {
-      expect(listServers.definition.description).toBeTruthy();
-      expect(listServers.definition.description).toBeDefined();
-      if (listServers.definition.description) {
-        expect(listServers.definition.description.length).toBeGreaterThan(0);
+      expect(listServers.description).toBeTruthy();
+      expect(listServers.description).toBeDefined();
+      if (listServers.description) {
+        expect(listServers.description.length).toBeGreaterThan(0);
       }
     });
 
     it('should have an input schema', () => {
-      expect(listServers.definition.inputSchema).toBeDefined();
-      expect(listServers.definition.inputSchema.type).toBe('object');
+      expect(listServers.parameters).toBeDefined();
     });
 
     it('should accept no input parameters', () => {
-      expect(listServers.definition.inputSchema.properties).toEqual({});
+      expect(Object.keys(listServers.parameters)).toHaveLength(0);
     });
   });
 });

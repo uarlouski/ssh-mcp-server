@@ -1,29 +1,22 @@
-import type { HandlerContext } from '../types.js';
+import type { HandlerContext, ToolDefinition } from '../types.js';
 import { buildToolResult } from '../response-builder.js';
-import type { ToolRegistration } from '../types.js';
+import z from 'zod';
 
-const definition = {
+const parameters = {};
+
+export const listServers: ToolDefinition<typeof parameters, HandlerContext> = {
   name: 'ssh_list_servers',
   description:
     'List all available SSH servers configured in config file with their connection details. ' +
     'This helps discover what servers are available for SSH operations.',
-  inputSchema: {
-    type: 'object',
-    properties: {},
-  },
-};
+  parameters,
+  handler: async (_args, context) => {
+    const servers = context.configManager.listServers();
 
-const handler = async (_args: any, context: HandlerContext) => {
-  const servers = context.configManager.listServers();
-
-  return buildToolResult({
-    success: true,
-    servers: servers,
-    count: servers.length,
-  });
-};
-
-export const listServers = <ToolRegistration>{
-  definition,
-  handler,
+    return buildToolResult({
+      success: true,
+      servers: servers,
+      count: servers.length,
+    });
+  }
 };
