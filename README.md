@@ -1,6 +1,6 @@
-# SSH MCP Server
+# SSH MCP Server for AI Assistants - Secure Remote Server Management
 
-A Model Context Protocol (MCP) server that provides secure SSH capabilities for AI assistants, enabling remote command execution, SFTP file transfers, and port forwarding with comprehensive security controls.
+A secure, production-ready **Model Context Protocol (MCP)** server that empowers AI assistants to manage remote infrastructure via SSH.
 
 [![npm version](https://badge.fury.io/js/@uarlouski%2Fssh-mcp-server.svg)](https://www.npmjs.com/package/@uarlouski/ssh-mcp-server)
 [![npm downloads](https://img.shields.io/npm/dm/@uarlouski/ssh-mcp-server.svg)](https://www.npmjs.com/package/@uarlouski/ssh-mcp-server)
@@ -10,8 +10,12 @@ A Model Context Protocol (MCP) server that provides secure SSH capabilities for 
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.3-blue.svg)](https://www.typescriptlang.org/)
 [![GitHub stars](https://img.shields.io/github/stars/uarlouski/ssh-mcp-server.svg?style=social&label=Star)](https://github.com/uarlouski/ssh-mcp-server)
 
+The **SSH MCP Server** bridges the gap between Large Language Models (LLMs) and your infrastructure. It enables AI assistants like **Claude Desktop**, **Cursor**, and **GitHub Copilot** to securely execute commands, transfer files via SFTP, and manage port forwarding tunnels. Turn your AI into a capable **DevOps assistant** that can troubleshoot, deploy, and monitor your servers with strict security boundaries.
+
 ## Table of Contents
 
+- [Why use SSH MCP Server?](#why-use-ssh-mcp-server)
+- [Compatibility](#compatibility)
 - [Features](#features)
 - [Installation](#installation)
 - [Quick Start](#quick-start)
@@ -21,19 +25,32 @@ A Model Context Protocol (MCP) server that provides secure SSH capabilities for 
 - [Examples](#examples)
 - [License](#license)
 
+## Why use SSH MCP Server?
+
+- **DevOps Automation**: Let your AI assistant check Docker container status, read Kubernetes pod logs, or restart systemd services.
+- **Infrastructure Debugging**: Quickly analyze log files, check disk usage, and investigate network issues using natural language.
+- **Secure File Management**: Safely read configuration files, update scripts, or retrieve logs via SFTP without leaving your chat interface.
+- **Complex Workflows**: Chain multiple commands and tools to perform complex maintenance tasks with a single prompt.
+
+## Compatibility
+
+This MCP server is designed to work with any client supporting the [Model Context Protocol](https://modelcontextprotocol.io/), including:
+
+- **Anthropic Claude Desktop**
+- **Cursor Editor**
+- **GitHub Copilot**
+
 ## Features
 
-- 🔐 **Secure SSH Command Execution** - Execute commands on remote servers with granular security controls
-- 🛡️ **Host Allowlisting** - Only connect to pre-configured, trusted servers
-- 📁 **SFTP File Operations** - Upload, download, list, and delete files on remote servers
-- 🌉 **SSH Port Forwarding** - Create secure tunnels to access remote services
-- 🔄 **Connection Pooling** - Persistent connections with automatic management
-- 🔑 **SSH Key Authentication** - Secure authentication using SSH private keys
-- ⚙️ **SSH Config Integration** - Import servers from your existing SSJ config file
-- ✅ **Command Allowlisting** - Restrict which commands can be executed
-- 📦 **Named Services** - Pre-configured port forwarding services for common use cases
-- 🎯 **Command Templates** - Reusable parameterized commands with variable substitution
-- 📝 **Audit Logging** - Comprehensive JSONL-based audit logging for compliance and tracking
+- 🔐 **Secure SSH Command Execution** - Run shell commands on remote servers with strict validation and timeouts.
+- 🛡️ **Granular Access Control** - Whitelist specific commands and arguments to prevent unauthorized actions (e.g., allow `docker ps` but block `docker stop`).
+- 📁 **SFTP Integration** - Full support for reading, writing, and listing files on remote filesystems.
+- 🌉 **Smart Port Forwarding** - Automatically manage SSH tunnels to access internal services like databases or dashboards.
+- 🔄 **Robust Connection Pooling** - Efficiently manages multiple persistent SSH connections for high performance.
+- 🔑 **Key-Based Authentication** - Supports standard SSH keys (Ed25519, RSA) for secure, password-less authentication.
+- ⚙️ **SSH Config Import** - Seamlessly imports hosts from your existing `~/.ssh/config` file.
+- 🎯 **Parameterized Templates** - Define safe, reusable command templates (macros) for common tasks.
+- 📝 **Audit Logging** - Complete JSONL audit trails of all executed commands for compliance and security reviews.
 
 ## Installation
 
