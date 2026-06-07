@@ -161,6 +161,11 @@ export class SSHConnectionManager {
         if (commandTimeout !== undefined) {
           timeoutId = setTimeout(() => {
             try {
+              stream.signal('KILL');
+            } catch {
+              // ignore
+            }
+            try {
               stream.close();
             } catch {
               // ignore
