@@ -286,6 +286,7 @@ describe('SSHConnectionManager', () => {
       const mockStream: any = {
         on: jest.fn(),
         close: jest.fn(),
+        signal: jest.fn(),
         stderr: { on: jest.fn() },
       };
 
@@ -309,6 +310,7 @@ describe('SSHConnectionManager', () => {
       await jest.runAllTimersAsync();
 
       const result = await promise;
+      expect(mockStream.signal).toHaveBeenCalledWith('KILL');
       expect(mockStream.close).toHaveBeenCalled();
       expect(result.timedOut).toBe(true);
       expect(result.exitCode).toBeNull();
