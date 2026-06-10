@@ -15,6 +15,7 @@ export const listPortForwards: ToolDefinition<typeof parameters, HandlerContext>
       success: true,
       count: forwards.length,
       forwards: forwards.map(f => ({
+        id: f.id,
         sshConnection: `${f.sshUsername}@${f.sshHost}:${f.sshPort}`,
         tunnel: `localhost:${f.localPort} -> ${f.remoteHost}:${f.remotePort}`,
         status: f.status,

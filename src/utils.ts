@@ -53,3 +53,16 @@ export function validateCommandTimeout(value: unknown): asserts value is number 
     throw new Error('commandTimeout must be a positive number (milliseconds)');
   }
 }
+
+/**
+ * Generates a random 8-character alphanumeric ID (letters and numbers)
+ * @returns An 8-character string
+ */
+export function generateShortId(): string {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+  let result = '';
+  for (let i = 0; i < 8; i++) {
+    result += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return result;
+}

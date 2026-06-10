@@ -30,6 +30,7 @@ describe('handleListPortForwards', () => {
     it('should list multiple active port forwards', async () => {
         const forwards = [
             {
+                id: 'forward-id-1',
                 sshHost: 'db.example.com',
                 sshPort: 22,
                 sshUsername: 'admin',
@@ -39,6 +40,7 @@ describe('handleListPortForwards', () => {
                 status: 'active' as const,
             },
             {
+                id: 'forward-id-2',
                 sshHost: 'app.example.com',
                 sshPort: 22,
                 sshUsername: 'deployer',
@@ -61,10 +63,12 @@ describe('handleListPortForwards', () => {
         expect(response.count).toBe(2);
         expect(response.forwards).toHaveLength(2);
 
+        expect(response.forwards[0].id).toBe('forward-id-1');
         expect(response.forwards[0].sshConnection).toBe('admin@db.example.com:22');
         expect(response.forwards[0].tunnel).toBe('localhost:5432 -> db-internal:5432');
         expect(response.forwards[0].status).toBe('active');
 
+        expect(response.forwards[1].id).toBe('forward-id-2');
         expect(response.forwards[1].sshConnection).toBe('deployer@app.example.com:22');
         expect(response.forwards[1].tunnel).toBe('localhost:8080 -> localhost:3000');
         expect(response.forwards[1].status).toBe('active');
@@ -87,6 +91,7 @@ describe('handleListPortForwards', () => {
     it('should properly format SSH connection string', async () => {
         const forwards = [
             {
+                id: 'forward-id-special',
                 sshHost: 'special-host.com',
                 sshPort: 2222,
                 sshUsername: 'special-user',
@@ -108,6 +113,7 @@ describe('handleListPortForwards', () => {
     it('should properly format tunnel string', async () => {
         const forwards = [
             {
+                id: 'forward-id-gateway',
                 sshHost: 'gateway.example.com',
                 sshPort: 22,
                 sshUsername: 'user',
@@ -129,6 +135,7 @@ describe('handleListPortForwards', () => {
     it('should include status for each forward', async () => {
         const forwards = [
             {
+                id: 'forward-id-1',
                 sshHost: 'server1.com',
                 sshPort: 22,
                 sshUsername: 'user1',
@@ -138,6 +145,7 @@ describe('handleListPortForwards', () => {
                 status: 'active' as const,
             },
             {
+                id: 'forward-id-2',
                 sshHost: 'server2.com',
                 sshPort: 22,
                 sshUsername: 'user2',

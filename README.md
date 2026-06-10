@@ -449,6 +449,7 @@ Set up SSH port forwarding to access remote services.
 **Response:**
 ```json
 {
+  "id": "a1b2c3d4",
   "localPort": 8080,
   "remoteHost": "internal-db.cluster.local",
   "remotePort": 5432,
@@ -461,14 +462,26 @@ Set up SSH port forwarding to access remote services.
 Close an active port forward.
 
 **Parameters:**
-- `connectionName` (string, required): Name of the server
-- `localPort` (number, required): Local port to close
+- `id` (string, required): Unique ID of the active port forward to close
 
 **Example:**
 ```json
 {
-  "connectionName": "staging-db",
-  "localPort": 8080
+  "id": "a1b2c3d4"
+}
+```
+
+### `ssh_restart_port_forward`
+
+Restart an active port forward using its unique ID.
+
+**Parameters:**
+- `id` (string, required): Unique ID of the active port forward to restart
+
+**Example:**
+```json
+{
+  "id": "a1b2c3d4"
 }
 ```
 
@@ -483,10 +496,10 @@ List all active port forwards across all connections.
 {
   "forwards": [
     {
-      "connectionName": "staging-db",
-      "localPort": 8080,
-      "remoteHost": "internal-db.cluster.local",
-      "remotePort": 5432
+      "id": "a1b2c3d4",
+      "sshConnection": "admin@db-staging.example.com:2222",
+      "tunnel": "localhost:8080 -> internal-db.cluster.local:5432",
+      "status": "active"
     }
   ]
 }
@@ -506,7 +519,7 @@ Start a pre-configured named port forwarding service from your config.
 }
 ```
 
-This is equivalent to calling `ssh_port_forward` with the pre-configured parameters.
+This is equivalent to calling `ssh_port_forward` with the pre-configured parameters (the returned result will include the generated unique `id`).
 
 ### `ssh_upload_file`
 

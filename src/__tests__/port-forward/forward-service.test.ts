@@ -47,6 +47,7 @@ describe('handleForwardService', () => {
         };
 
         const forwardResult = {
+            id: 'forward-id-123',
             localPort: 5432,
             status: 'active',
         };
@@ -72,6 +73,7 @@ describe('handleForwardService', () => {
         expect(result.content[0].type).toBe('text');
         const response = JSON.parse((result.content[0] as any).text);
         expect(response.success).toBe(true);
+        expect(response.id).toBe('forward-id-123');
         expect(response.serviceName).toBe('production-database');
         expect(response.localPort).toBe(5432);
         expect(response.status).toBe('active');
@@ -94,6 +96,7 @@ describe('handleForwardService', () => {
         };
 
         const forwardResult = {
+            id: 'forward-id-456',
             localPort: 12345,
             status: 'active',
         };
@@ -115,6 +118,7 @@ describe('handleForwardService', () => {
         );
 
         const response = JSON.parse((result.content[0] as any).text);
+        expect(response.id).toBe('forward-id-456');
         expect(response.localPort).toBe(12345);
         expect(response.status).toBe('active');
     });
@@ -135,6 +139,7 @@ describe('handleForwardService', () => {
         };
 
         const forwardResult = {
+            id: 'forward-id-123',
             localPort: 5432,
             status: 'already_active',
         };

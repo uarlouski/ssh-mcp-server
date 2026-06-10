@@ -11,8 +11,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Migrate from deprecated Server API
 
+### Added
+- Add `ssh_restart_port_forward` tool to restart an active tunnel.
+
 ### Fixed
 - Fix command execution timeout to send `SIGKILL` (`KILL`) signal to the remote process to ensure it terminates on the server instead of just closing the local stream.
+
+### Breaking Changes
+- `ssh_close_port_forward` tool accepts only the unique `id` parameter instead of `connectionName` and `localPort`.
+- `ssh_list_port_forwards` response structure changed the `forwards` objects now return `id`, `sshConnection`, `tunnel`, and `status` instead of the raw connection and port details.
 
 ## [1.5.0] - 2025-02-12
 

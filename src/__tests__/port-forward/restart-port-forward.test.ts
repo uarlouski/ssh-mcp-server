@@ -1,5 +1,5 @@
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
-import { closePortForward } from '../../tools/port-forward/close-port-forward.js';
+import { restartPortForward } from '../../tools/port-forward/restart-port-forward.js';
 import { ConfigManager } from '../../config.js';
 import { SSHConnectionManager } from '../../ssh-manager.js';
 import type { HandlerContext } from '../../tools/types.js';
@@ -7,7 +7,7 @@ import type { HandlerContext } from '../../tools/types.js';
 jest.mock('../../config.js');
 jest.mock('../../ssh-manager.js');
 
-describe('handleClosePortForward', () => {
+describe('handleRestartPortForward', () => {
     let mockConfigManager: jest.Mocked<ConfigManager>;
     let mockSSHManager: jest.Mocked<SSHConnectionManager>;
     let context: HandlerContext;
@@ -21,7 +21,7 @@ describe('handleClosePortForward', () => {
 
         mockSSHManager = {
             listPortForwards: jest.fn(),
-            closePortForward: jest.fn(),
+            restartPortForward: jest.fn(),
         } as any;
 
         context = {
@@ -30,7 +30,7 @@ describe('handleClosePortForward', () => {
         };
     });
 
-    it('should successfully close an active port forward by ID', async () => {
+    it('should successfully restart an active port forward by ID', async () => {
         const forwards = [
             {
                 id: 'forward-id-123',
@@ -45,21 +45,26 @@ describe('handleClosePortForward', () => {
         ];
 
         mockSSHManager.listPortForwards.mockReturnValue(forwards);
-        mockSSHManager.closePortForward.mockResolvedValue(undefined);
+        mockSSHManager.restartPortForward.mockResolvedValue({
+            id: 'forward-id-123',
+            localPort: 5432,
+            status: 'active',
+        });
 
-        const result = await closePortForward.handler(
+        const result = await restartPortForward.handler(
             { id: 'forward-id-123' },
             context
         );
 
         expect(mockSSHManager.listPortForwards).toHaveBeenCalled();
-        expect(mockSSHManager.closePortForward).toHaveBeenCalledWith('forward-id-123');
+        expect(mockSSHManager.restartPortForward).toHaveBeenCalledWith('forward-id-123');
 
         expect(result.content[0].type).toBe('text');
         const response = JSON.parse((result.content[0] as any).text);
         expect(response.success).toBe(true);
-        expect(response.message).toContain('localhost:5432');
-        expect(response.message).toContain('db-internal:5432');
+        expect(response.id).toBe('forward-id-123');
+        expect(response.localPort).toBe(5432);
+        expect(response.message).toContain('restarted');
     });
 
     it('should throw error when no matching port forward is found', async () => {
@@ -79,14 +84,14 @@ describe('handleClosePortForward', () => {
         mockSSHManager.listPortForwards.mockReturnValue(forwards);
 
         await expect(
-            closePortForward.handler(
+            restartPortForward.handler(
                 { id: 'non-existent-id' },
                 context
             )
         ).rejects.toThrow('No active port forward found with ID: non-existent-id');
     });
 
-    it('should propagate errors from closePortForward method', async () => {
+    it('should propagate errors from restartPortForward method', async () => {
         const forwards = [
             {
                 id: 'forward-id-123',
@@ -101,13 +106,13 @@ describe('handleClosePortForward', () => {
         ];
 
         mockSSHManager.listPortForwards.mockReturnValue(forwards);
-        mockSSHManager.closePortForward.mockRejectedValue(new Error('Connection timeout'));
+        mockSSHManager.restartPortForward.mockRejectedValue(new Error('Restart failed'));
 
         await expect(
-            closePortForward.handler(
+            restartPortForward.handler(
                 { id: 'forward-id-123' },
                 context
             )
-        ).rejects.toThrow('Connection timeout');
+        ).rejects.toThrow('Restart failed');
     });
 });
