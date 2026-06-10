@@ -26,6 +26,7 @@ export const portForward: ToolDefinition<typeof parameters, HandlerContext> = {
 
     return buildToolResult({
       success: true,
+      id: forwardResult.id,
       localPort: forwardResult.localPort,
       remoteHost,
       remotePort,

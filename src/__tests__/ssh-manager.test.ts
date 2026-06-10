@@ -389,6 +389,7 @@ describe('SSHConnectionManager', () => {
       expect(Array.isArray(forwards)).toBe(true);
 
       forwards.forEach(forward => {
+        expect(forward).toHaveProperty('id');
         expect(forward).toHaveProperty('sshHost');
         expect(forward).toHaveProperty('sshPort');
         expect(forward).toHaveProperty('sshUsername');
@@ -445,6 +446,7 @@ describe('SSHConnectionManager', () => {
       const result = await sshManager.setupPortForward(sshConfig, 8080, 'localhost', 3000);
 
       expect(result).toEqual({
+        id: expect.any(String),
         localPort: 8080,
         status: 'active',
       });
@@ -463,9 +465,11 @@ describe('SSHConnectionManager', () => {
 
       const result1 = await sshManager.setupPortForward(sshConfig, 8080, 'localhost', 3000);
       expect(result1.status).toBe('active');
+      expect(result1.id).toEqual(expect.any(String));
 
       const result2 = await sshManager.setupPortForward(sshConfig, 8080, 'localhost', 3000);
       expect(result2).toEqual({
+        id: result1.id,
         localPort: 8080,
         status: 'already_active',
       });
@@ -570,6 +574,7 @@ describe('SSHConnectionManager', () => {
       const result = await sshManager.setupPortForward(sshConfig, 0, 'localhost', 3000);
 
       expect(result).toEqual({
+        id: expect.any(String),
         localPort: 12345,
         status: 'active',
       });
@@ -580,6 +585,7 @@ describe('SSHConnectionManager', () => {
       const forwards = sshManager.listPortForwards();
       expect(forwards).toHaveLength(1);
       expect(forwards[0].localPort).toBe(12345);
+      expect(forwards[0].id).toBe(result.id);
     });
 
     it('should use allocated port in forwardOut when using dynamic allocation', async () => {
@@ -677,13 +683,13 @@ describe('SSHConnectionManager', () => {
 
       mockServer.on.mockReturnValue(mockServer);
 
-      await sshManager.setupPortForward(sshConfig, 8080, 'localhost', 3000);
+      const result = await sshManager.setupPortForward(sshConfig, 8080, 'localhost', 3000);
 
       mockServer.close.mockImplementation((callback: any) => {
         setTimeout(() => callback(), 0);
       });
 
-      await sshManager.closePortForward(sshConfig, 8080, 'localhost', 3000);
+      await sshManager.closePortForward(result.id);
 
       expect(mockServer.close).toHaveBeenCalled();
 
@@ -693,7 +699,7 @@ describe('SSHConnectionManager', () => {
 
     it('should handle closing non-existent port forward gracefully', async () => {
       await expect(
-        sshManager.closePortForward(sshConfig, 9999, 'localhost', 3000)
+        sshManager.closePortForward('non-existent-id')
       ).resolves.toBeUndefined();
     });
 
@@ -705,7 +711,7 @@ describe('SSHConnectionManager', () => {
 
       mockServer.on.mockReturnValue(mockServer);
 
-      await sshManager.setupPortForward(sshConfig, 8080, 'localhost', 3000);
+      const result = await sshManager.setupPortForward(sshConfig, 8080, 'localhost', 3000);
 
       const closeCallback = jest.fn();
       mockServer.close.mockImplementation((callback: any) => {
@@ -713,7 +719,7 @@ describe('SSHConnectionManager', () => {
         closeCallback();
       });
 
-      await sshManager.closePortForward(sshConfig, 8080, 'localhost', 3000);
+      await sshManager.closePortForward(result.id);
 
       expect(closeCallback).toHaveBeenCalled();
     });
@@ -726,8 +732,8 @@ describe('SSHConnectionManager', () => {
 
       mockServer.on.mockReturnValue(mockServer);
 
-      await sshManager.setupPortForward(sshConfig, 8080, 'localhost', 3000);
-      await sshManager.setupPortForward(sshConfig, 8081, 'localhost', 3001);
+      const result1 = await sshManager.setupPortForward(sshConfig, 8080, 'localhost', 3000);
+      const result2 = await sshManager.setupPortForward(sshConfig, 8081, 'localhost', 3001);
 
       let forwards = sshManager.listPortForwards();
       expect(forwards).toHaveLength(2);
@@ -736,7 +742,7 @@ describe('SSHConnectionManager', () => {
         setTimeout(() => callback(), 0);
       });
 
-      await sshManager.closePortForward(sshConfig, 8080, 'localhost', 3000);
+      await sshManager.closePortForward(result1.id);
 
       forwards = sshManager.listPortForwards();
       expect(forwards).toHaveLength(1);

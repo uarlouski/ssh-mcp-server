@@ -78,6 +78,7 @@ describe('Type Definitions', () => {
   describe('PortForwardInfo', () => {
     it('should represent active port forwarding information', () => {
       const info: PortForwardInfo = {
+        id: 'forward-id-123',
         sshHost: 'bastion.example.com',
         sshPort: 22,
         sshUsername: 'admin',

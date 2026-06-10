@@ -57,6 +57,7 @@ export interface CommandResult {
 }
 
 export interface PortForwardInfo {
+  id: string;
   sshHost: string;
   sshPort: number;
   sshUsername: string;

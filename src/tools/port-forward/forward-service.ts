@@ -24,6 +24,7 @@ export const forwardService: ToolDefinition<typeof parameters, HandlerContext> =
 
     return buildToolResult({
       success: true,
+      id: forwardResult.id,
       serviceName,
       description: service.description,
       localPort: forwardResult.localPort,

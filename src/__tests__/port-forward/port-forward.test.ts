@@ -38,6 +38,7 @@ describe('handlePortForward', () => {
         };
 
         const forwardResult = {
+            id: 'forward-id-123',
             localPort: 5432,
             status: 'active',
         };
@@ -66,6 +67,7 @@ describe('handlePortForward', () => {
         expect(result.content[0].type).toBe('text');
         const response = JSON.parse((result.content[0] as any).text);
         expect(response.success).toBe(true);
+        expect(response.id).toBe('forward-id-123');
         expect(response.localPort).toBe(5432);
         expect(response.remoteHost).toBe('db-internal');
         expect(response.remotePort).toBe(5432);
@@ -82,6 +84,7 @@ describe('handlePortForward', () => {
         };
 
         const forwardResult = {
+            id: 'forward-id-456',
             localPort: 12345,
             status: 'active',
         };
@@ -106,6 +109,7 @@ describe('handlePortForward', () => {
         );
 
         const response = JSON.parse((result.content[0] as any).text);
+        expect(response.id).toBe('forward-id-456');
         expect(response.localPort).toBe(12345);
         expect(response.status).toBe('active');
         expect(response.message).toBe('Port forwarding active: localhost:12345 -> localhost:8080');
@@ -120,6 +124,7 @@ describe('handlePortForward', () => {
         };
 
         const forwardResult = {
+            id: 'forward-id-789',
             localPort: 54321,
             status: 'active',
         };
@@ -153,6 +158,7 @@ describe('handlePortForward', () => {
         };
 
         const forwardResult = {
+            id: 'forward-id-123',
             localPort: 5432,
             status: 'already_active',
         };
@@ -226,6 +232,7 @@ describe('handlePortForward', () => {
         };
 
         const forwardResult = {
+            id: 'forward-id-999',
             localPort: 9000,
             status: 'active',
         };

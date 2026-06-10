@@ -2,12 +2,13 @@ import { Client, ClientChannel, ConnectConfig, SFTPWrapper } from 'ssh2';
 import { readFile, stat } from 'fs/promises';
 import type { SSHConfig, CommandResult, PortForwardInfo, FileInfo, FileTransferResult, FileListResult, FileDeleteResult } from './types.js';
 import { createServer, Server as NetServer } from 'net';
-import { expandTilde, validateCommandTimeout } from './utils.js';
+import { expandTilde, validateCommandTimeout, generateShortId } from './utils.js';
 import { createReadStream, createWriteStream } from 'fs';
 import { AuditLogger } from './logger.js';
 import { randomUUID } from 'crypto';
 
 interface ForwardingInfo {
+  id: string;
   config: SSHConfig;
   localPort: number;
   remoteHost: string;
@@ -200,12 +201,14 @@ export class SSHConnectionManager {
     localPort: number,
     remoteHost: string,
     remotePort: number
-  ): Promise<{ localPort: number; status: string }> {
+  ): Promise<{ id: string; localPort: number; status: string }> {
     const { client } = await this.getConnection(config);
     const forwardKey = `${this.getConnectionKey(config)}:${localPort}->${remoteHost}:${remotePort}`;
 
     if (localPort !== 0 && this.forwardingServers.has(forwardKey)) {
+      const existing = this.forwardingServers.get(forwardKey)!;
       return {
+        id: existing.id,
         localPort,
         status: 'already_active'
       };
@@ -263,8 +266,10 @@ export class SSHConnectionManager {
       server.listen(localPort, '127.0.0.1', () => {
         const allocatedPort = localPort === 0 ? (server.address() as any).port : localPort;
         const actualForwardKey = `${this.getConnectionKey(config)}:${allocatedPort}->${remoteHost}:${remotePort}`;
+        const id = generateShortId();
 
         this.forwardingServers.set(actualForwardKey, {
+          id,
           config,
           localPort: allocatedPort,
           remoteHost,
@@ -273,6 +278,7 @@ export class SSHConnectionManager {
         });
 
         resolve({
+          id,
           localPort: allocatedPort,
           status: 'active'
         });
@@ -284,23 +290,51 @@ export class SSHConnectionManager {
     });
   }
 
-  async closePortForward(
-    config: SSHConfig,
-    localPort: number,
-    remoteHost: string,
-    remotePort: number
-  ): Promise<void> {
-    const forwardKey = `${this.getConnectionKey(config)}:${localPort}->${remoteHost}:${remotePort}`;
-    const forwardInfo = this.forwardingServers.get(forwardKey);
+  async closePortForward(id: string): Promise<void> {
+    let foundKey: string | undefined;
+    let foundInfo: ForwardingInfo | undefined;
 
-    if (forwardInfo) {
+    for (const [key, info] of this.forwardingServers.entries()) {
+      if (info.id === id) {
+        foundKey = key;
+        foundInfo = info;
+        break;
+      }
+    }
+
+    if (foundInfo && foundKey) {
       return new Promise((resolve) => {
-        forwardInfo.server.close(() => {
-          this.forwardingServers.delete(forwardKey);
+        foundInfo!.server.close(() => {
+          this.forwardingServers.delete(foundKey!);
           resolve();
         });
       });
     }
+  }
+
+  async restartPortForward(id: string): Promise<{ id: string; localPort: number; status: string }> {
+    let foundKey: string | undefined;
+    let foundInfo: ForwardingInfo | undefined;
+
+    for (const [key, info] of this.forwardingServers.entries()) {
+      if (info.id === id) {
+        foundKey = key;
+        foundInfo = info;
+        break;
+      }
+    }
+
+    if (!foundInfo || !foundKey) {
+      throw new Error(`No active port forward found with ID: ${id}`);
+    }
+
+    const { config, localPort, remoteHost, remotePort } = foundInfo;
+
+    // Close the existing one
+    await this.closePortForward(id);
+
+    // Set up the new one using the same config/ports
+    return this.setupPortForward(config, localPort, remoteHost, remotePort);
   }
 
   listPortForwards(): PortForwardInfo[] {
@@ -308,6 +342,7 @@ export class SSHConnectionManager {
 
     for (const [key, info] of this.forwardingServers.entries()) {
       forwards.push({
+        id: info.id,
         sshHost: info.config.host,
         sshPort: info.config.port || 22,
         sshUsername: info.config.username,

@@ -20,6 +20,7 @@ import { listPortForwards } from './tools/port-forward/list-port-forwards.js';
 import { forwardService } from './tools/port-forward/forward-service.js';
 import { executeTemplate } from './tools/templates/execute-template.js';
 import { listTemplates } from './tools/templates/list-templates.js';
+import { restartPortForward } from './tools/port-forward/restart-port-forward.js';
 
 const args = process.argv.slice(2);
 const configPathArg = args.find(arg => arg.startsWith('--configPath='));
@@ -66,7 +67,8 @@ const definitions = [
   listPortForwards,
   forwardService,
   executeTemplate,
-  listTemplates
+  listTemplates,
+  restartPortForward
 ];
 
 for (const def of definitions) {
